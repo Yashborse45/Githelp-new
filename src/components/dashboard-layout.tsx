@@ -15,7 +15,7 @@ interface DashboardLayoutProps {
 
 export function DashboardLayout({ children }: DashboardLayoutProps) {
   const [activeView, setActiveView] = useState("dashboard")
-  const [selectedProject, setSelectedProject] = useState<number | null>(null)
+  const [selectedProject, setSelectedProject] = useState<string | null>(null)
   const { isLoaded, isSignedIn } = useUser()
   const router = useRouter()
   const { toast } = useToast()

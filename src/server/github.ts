@@ -9,6 +9,21 @@ export type RepoFile = {
     content: string;
 };
 
+export type RepoCommit = {
+    sha: string;
+    message: string;
+    author: string | null;
+    timestamp: Date;
+    htmlUrl: string;
+    changes: string[];
+    pullRequest?: string | null;
+    stats: {
+        additions: number;
+        deletions: number;
+        total: number;
+    };
+};
+
 export async function listRepoFiles(owner: string, repo: string, token?: string): Promise<RepoFile[]> {
     const octokit = new Octokit({ auth: token || process.env.GITHUB_TOKEN });
 
@@ -57,4 +72,162 @@ export async function listRepoFiles(owner: string, repo: string, token?: string)
     }
 
     return results;
+}
+
+export async function getRecentCommits(owner: string, repo: string, token?: string, limit = 10): Promise<RepoCommit[]> {
+    const octokit = new Octokit({ auth: token || process.env.GITHUB_TOKEN });
+
+    try {
+        const { data: commits } = await octokit.rest.repos.listCommits({
+            owner,
+            repo,
+            per_page: limit,
+        });
+
+        // Fetch detailed information for each commit
+        const detailedCommits = await Promise.all(
+            commits.map(async (commit) => {
+                try {
+                    // Get commit details including file changes
+                    const { data: commitDetail } = await octokit.rest.repos.getCommit({
+                        owner,
+                        repo,
+                        ref: commit.sha,
+                    });
+
+                    // Generate change summary from files
+                    const changes = generateChangeSummary(commitDetail.files || []);
+                    
+                    // Check if this is a pull request merge
+                    const pullRequest = extractPullRequestFromMessage(commit.commit.message);
+
+                    return {
+                        sha: commit.sha,
+                        message: commit.commit.message,
+                        author: commit.commit.author?.name || commit.author?.login || null,
+                        timestamp: new Date(commit.commit.author?.date || commit.commit.committer?.date || new Date()),
+                        htmlUrl: commit.html_url,
+                        changes,
+                        pullRequest,
+                        stats: {
+                            additions: commitDetail.stats?.additions || 0,
+                            deletions: commitDetail.stats?.deletions || 0,
+                            total: commitDetail.stats?.total || 0,
+                        },
+                    };
+                } catch (error) {
+                    console.error(`Error fetching details for commit ${commit.sha}:`, error);
+                    // Return basic commit info if detailed fetch fails
+                    return {
+                        sha: commit.sha,
+                        message: commit.commit.message,
+                        author: commit.commit.author?.name || commit.author?.login || null,
+                        timestamp: new Date(commit.commit.author?.date || commit.commit.committer?.date || new Date()),
+                        htmlUrl: commit.html_url,
+                        changes: ['+ ' + commit.commit.message.split('\n')[0]],
+                        pullRequest: extractPullRequestFromMessage(commit.commit.message),
+                        stats: { additions: 0, deletions: 0, total: 0 },
+                    };
+                }
+            })
+        );
+
+        return detailedCommits;
+    } catch (error) {
+        console.error("Failed to fetch commits:", error);
+        return [];
+    }
+}
+
+function generateChangeSummary(files: any[]): string[] {
+    const changes: string[] = [];
+    const filesByType: Record<string, number> = {};
+    const significantFiles: string[] = [];
+
+    files.forEach(file => {
+        const filename = file.filename;
+        const extension = filename.split('.').pop()?.toLowerCase() || 'other';
+        const status = file.status;
+        
+        filesByType[extension] = (filesByType[extension] || 0) + 1;
+        
+        // Track significant files (not in node_modules, dist, etc.)
+        if (!filename.includes('node_modules') && 
+            !filename.includes('dist/') && 
+            !filename.includes('.lock') &&
+            !filename.startsWith('.')) {
+            significantFiles.push(filename);
+        }
+        
+        // Generate specific change descriptions
+        if (status === 'added') {
+            if (filename.includes('component') || filename.includes('Component')) {
+                changes.push(`+ Added new component: ${filename}`);
+            } else if (extension === 'ts' || extension === 'tsx') {
+                changes.push(`+ Added TypeScript file: ${filename}`);
+            } else if (extension === 'js' || extension === 'jsx') {
+                changes.push(`+ Added JavaScript file: ${filename}`);
+            } else {
+                changes.push(`+ Added ${filename}`);
+            }
+        } else if (status === 'removed') {
+            changes.push(`- Removed ${filename}`);
+        } else if (status === 'modified') {
+            if (file.additions > file.deletions) {
+                changes.push(`+ Updated ${filename} (+${file.additions} lines)`);
+            } else if (file.deletions > file.additions) {
+                changes.push(`- Refactored ${filename} (-${file.deletions} lines)`);
+            } else {
+                changes.push(`~ Modified ${filename}`);
+            }
+        }
+    });
+
+    // Add summary if many files changed
+    if (files.length > 5) {
+        const topTypes = Object.entries(filesByType)
+            .sort(([,a], [,b]) => b - a)
+            .slice(0, 2)
+            .map(([type, count]) => `${count} ${type} file${count > 1 ? 's' : ''}`)
+            .join(', ');
+        
+        changes.unshift(`+ Updated ${files.length} files (${topTypes})`);
+    }
+
+    // If no specific changes generated, create a generic one
+    if (changes.length === 0) {
+        changes.push(`+ Modified ${files.length} file${files.length > 1 ? 's' : ''}`);
+    }
+
+    return changes.slice(0, 4); // Limit to 4 changes for readability
+}
+
+function extractPullRequestFromMessage(message: string): string | null {
+    const prMatch = message.match(/#(\d+)/) || message.match(/pull request #(\d+)/i);
+    return prMatch ? `#${prMatch[1]}` : null;
+}
+
+export function getRelativeTime(dateString: Date | string): string {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffInMs = now.getTime() - date.getTime();
+    const diffInDays = Math.floor(diffInMs / (1000 * 60 * 60 * 24));
+    const diffInHours = Math.floor(diffInMs / (1000 * 60 * 60));
+    const diffInMinutes = Math.floor(diffInMs / (1000 * 60));
+
+    if (diffInDays > 365) {
+        const years = Math.floor(diffInDays / 365);
+        return `about ${years} year${years > 1 ? 's' : ''} ago`;
+    } else if (diffInDays > 30) {
+        const months = Math.floor(diffInDays / 30);
+        return `about ${months} month${months > 1 ? 's' : ''} ago`;
+    } else if (diffInDays > 0) {
+        return `${diffInDays} day${diffInDays > 1 ? 's' : ''} ago`;
+    } else if (diffInHours > 0) {
+        return `${diffInHours} hour${diffInHours > 1 ? 's' : ''} ago`;
+    } else if (diffInMinutes > 0) {
+        return `${diffInMinutes} minute${diffInMinutes > 1 ? 's' : ''} ago`;
+    } else {
+        return 'just now';
+    }
 }

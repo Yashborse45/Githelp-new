@@ -19,8 +19,8 @@ import { useState } from "react"
 interface SidebarProps {
   activeView: string
   onViewChange: (view: string) => void
-  selectedProject: number | null
-  onProjectChange: (projectId: number | null) => void
+  selectedProject: string | null
+  onProjectChange: (projectId: string | null) => void
 }
 
 export function Sidebar({ activeView, onViewChange, selectedProject, onProjectChange }: SidebarProps) {
@@ -53,11 +53,10 @@ export function Sidebar({ activeView, onViewChange, selectedProject, onProjectCh
   }
 
   const handleProjectClick = (projectId: string) => {
-    const numericId = parseInt(projectId, 10)
-    if (selectedProject === numericId) {
+    if (selectedProject === projectId) {
       onProjectChange(null)
     } else {
-      onProjectChange(numericId)
+      onProjectChange(projectId)
     }
   }
 
@@ -143,8 +142,8 @@ export function Sidebar({ activeView, onViewChange, selectedProject, onProjectCh
                 <div className="text-sm text-muted-foreground px-3 py-2">No projects yet. Create your first project!</div>
               ) : (
                 projects.map((project) => {
-                  const projectId = parseInt(project.id, 10)
                   const initial = project.name.charAt(0).toUpperCase()
+                  const isSelected = selectedProject === project.id
                   return (
                     <button
                       key={project.id}
@@ -152,13 +151,13 @@ export function Sidebar({ activeView, onViewChange, selectedProject, onProjectCh
                       className={cn(
                         "w-full text-left px-3 py-2 rounded-md text-sm transition-colors flex items-center space-x-2",
                         "hover:bg-muted hover:text-foreground",
-                        selectedProject === projectId ? "bg-primary text-primary-foreground" : "text-foreground",
+                        isSelected ? "bg-primary text-primary-foreground" : "text-foreground",
                       )}
                     >
                       <div
                         className={cn(
                           "w-5 h-5 rounded flex items-center justify-center text-xs font-medium flex-shrink-0",
-                          selectedProject === projectId ? "bg-primary-foreground text-primary" : "bg-muted text-muted-foreground",
+                          isSelected ? "bg-primary-foreground text-primary" : "bg-muted text-muted-foreground",
                         )}
                       >
                         {initial}

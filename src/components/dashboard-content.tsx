@@ -57,9 +57,10 @@ const savedQuestions = [
 interface DashboardContentProps {
   activeView: string
   selectedProject: number | null
+  onViewChange?: (view: string) => void
 }
 
-export function DashboardContent({ activeView, selectedProject }: DashboardContentProps) {
+export function DashboardContent({ activeView, selectedProject, onViewChange }: DashboardContentProps) {
   // Local state for Q&A interaction
   const [question, setQuestion] = useState("")
   const [showAnswerBox, setShowAnswerBox] = useState(false)
@@ -76,7 +77,14 @@ export function DashboardContent({ activeView, selectedProject }: DashboardConte
   }
 
   if (activeView === "create-project") {
-    return <CreateProjectForm />
+    return (
+      <CreateProjectForm 
+        onProjectCreated={() => {
+          // Switch back to dashboard view after project creation
+          onViewChange?.("dashboard")
+        }} 
+      />
+    )
   }
 
   if (activeView === "qa") {

@@ -1,7 +1,5 @@
 import crypto from "crypto";
-import { embedTexts } from "./gemini";
 import type { RepoFile } from "./github";
-import { upsertVectors } from "./pinecone";
 
 // Ignore patterns for repository file ingestion. Keep in sync with filtering in github.ts.
 // Quick-win approach: simple substring / extension checks (not full globbing yet).
@@ -50,45 +48,60 @@ function chunkText(text: string, chunkSize = 1000, overlap = 200) {
 }
 
 export async function ingestFilesToPinecone(files: RepoFile[], projectId: string): Promise<{ processedFiles: number }> {
-    const vectors: Array<any> = [];
-    let processedFiles = 0;
+    // Early return if required environment variables are not set
+    if (!process.env.PINECONE_API_KEY || !process.env.GEMINI_API_KEY) {
+        console.warn('Pinecone or Gemini API keys not configured. Skipping ingestion.');
+        return { processedFiles: 0 };
+    }
 
-    for (const file of files) {
-        if (shouldIgnore(file.path)) continue;
-        // Skip empty / excessively large files
-        if (!file.content || file.content.length > 200_000) continue;
+    try {
+        // Dynamic imports to avoid module loading issues
+        const { embedTexts } = await import("./gemini");
+        const { upsertVectors } = await import("./pinecone");
 
-        const chunks = chunkText(file.content, 800, 200);
-        if (!chunks.length) continue;
-        processedFiles += 1;
-        const embeddings = await embedTexts(chunks);
+        const vectors: Array<any> = [];
+        let processedFiles = 0;
 
-        for (let i = 0; i < chunks.length; i++) {
-            const chunk = chunks[i];
-            if (chunk == null) continue;
-            const embedding = embeddings[i];
-            if (!embedding) continue; // guard in case embedTexts returns shorter array
-            const hash = hashText(chunk);
+        for (const file of files) {
+            if (shouldIgnore(file.path)) continue;
+            // Skip empty / excessively large files
+            if (!file.content || file.content.length > 200_000) continue;
 
-            const id = `${projectId}--${file.path}--${i}--${hash}`;
-            const metadata = {
-                projectId,
-                path: file.path,
-                chunkIndex: i,
-                hash,
-                text: chunk.slice(0, 500),
-            };
+            const chunks = chunkText(file.content, 800, 200);
+            if (!chunks.length) continue;
+            processedFiles += 1;
+            const embeddings = await embedTexts(chunks);
 
-            vectors.push({ id, values: embedding, metadata });
+            for (let i = 0; i < chunks.length; i++) {
+                const chunk = chunks[i];
+                if (chunk == null) continue;
+                const embedding = embeddings[i];
+                if (!embedding) continue; // guard in case embedTexts returns shorter array
+                const hash = hashText(chunk);
 
-            if (vectors.length >= 100) {
-                await upsertVectors(vectors.splice(0, 100));
+                const id = `${projectId}--${file.path}--${i}--${hash}`;
+                const metadata = {
+                    projectId,
+                    path: file.path,
+                    chunkIndex: i,
+                    hash,
+                    text: chunk.slice(0, 500),
+                };
+
+                vectors.push({ id, values: embedding, metadata });
+
+                if (vectors.length >= 100) {
+                    await upsertVectors(vectors.splice(0, 100));
+                }
             }
         }
-    }
 
-    if (vectors.length > 0) {
-        await upsertVectors(vectors);
+        if (vectors.length > 0) {
+            await upsertVectors(vectors);
+        }
+        return { processedFiles };
+    } catch (error) {
+        console.warn('Ingestion to Pinecone failed:', error);
+        return { processedFiles: 0 };
     }
-    return { processedFiles };
 }

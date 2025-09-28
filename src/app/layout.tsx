@@ -1,4 +1,5 @@
 import { ThemeProvider } from "@/components/theme-provider"
+import { Toaster } from "@/components/ui/toaster"
 import { env } from "@/env"
 import { TRPCReactProvider } from "@/trpc/react"
 import { ClerkProvider } from "@clerk/nextjs"
@@ -84,6 +85,7 @@ export default function RootLayout({
             <TRPCReactProvider>
               <ThemeProvider attribute="class" defaultTheme="light" enableSystem disableTransitionOnChange>
                 {children}
+                <Toaster />
               </ThemeProvider>
             </TRPCReactProvider>
           </ClerkProvider>

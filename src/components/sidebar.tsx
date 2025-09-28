@@ -11,18 +11,10 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { cn } from "@/lib/utils"
+import { api } from "@/trpc/react"
 import { useClerk, useUser } from "@clerk/nextjs"
 import { useRouter } from "next/navigation"
 import { useState } from "react"
-
-const projects = [
-  { id: 1, name: "commits", initial: "c", active: false },
-  { id: 2, name: "commits test", initial: "c", active: false },
-  { id: 3, name: "test index", initial: "t", active: false },
-  { id: 4, name: "test credits", initial: "t", active: false },
-  { id: 5, name: "sdfsdf", initial: "s", active: false },
-  { id: 6, name: "Test Prod", initial: "T", active: true },
-]
 
 interface SidebarProps {
   activeView: string
@@ -36,6 +28,9 @@ export function Sidebar({ activeView, onViewChange, selectedProject, onProjectCh
   const { user, isLoaded, isSignedIn } = useUser()
   const { signOut } = useClerk()
   const router = useRouter()
+
+  // Fetch projects from the API
+  const { data: projects = [], isLoading: projectsLoading } = api.project.list.useQuery()
 
   const handleDashboardClick = () => {
     onViewChange("dashboard")
@@ -57,11 +52,12 @@ export function Sidebar({ activeView, onViewChange, selectedProject, onProjectCh
     }
   }
 
-  const handleProjectClick = (projectId: number) => {
-    if (selectedProject === projectId) {
+  const handleProjectClick = (projectId: string) => {
+    const numericId = parseInt(projectId, 10)
+    if (selectedProject === numericId) {
       onProjectChange(null)
     } else {
-      onProjectChange(projectId)
+      onProjectChange(numericId)
     }
   }
 
@@ -141,27 +137,37 @@ export function Sidebar({ activeView, onViewChange, selectedProject, onProjectCh
           <div className="mb-4">
             <h3 className="text-sm font-medium text-muted-foreground mb-3">Your Projects</h3>
             <div className="space-y-1">
-              {projects.map((project) => (
-                <button
-                  key={project.id}
-                  onClick={() => handleProjectClick(project.id)}
-                  className={cn(
-                    "w-full text-left px-3 py-2 rounded-md text-sm transition-colors flex items-center space-x-2",
-                    "hover:bg-muted hover:text-foreground",
-                    selectedProject === project.id ? "bg-primary text-primary-foreground" : "text-foreground",
-                  )}
-                >
-                  <div
-                    className={cn(
-                      "w-5 h-5 rounded flex items-center justify-center text-xs font-medium flex-shrink-0",
-                      selectedProject === project.id ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground",
-                    )}
-                  >
-                    {project.initial}
-                  </div>
-                  <span className="truncate">{project.name}</span>
-                </button>
-              ))}
+              {projectsLoading ? (
+                <div className="text-sm text-muted-foreground px-3 py-2">Loading projects...</div>
+              ) : projects.length === 0 ? (
+                <div className="text-sm text-muted-foreground px-3 py-2">No projects yet. Create your first project!</div>
+              ) : (
+                projects.map((project) => {
+                  const projectId = parseInt(project.id, 10)
+                  const initial = project.name.charAt(0).toUpperCase()
+                  return (
+                    <button
+                      key={project.id}
+                      onClick={() => handleProjectClick(project.id)}
+                      className={cn(
+                        "w-full text-left px-3 py-2 rounded-md text-sm transition-colors flex items-center space-x-2",
+                        "hover:bg-muted hover:text-foreground",
+                        selectedProject === projectId ? "bg-primary text-primary-foreground" : "text-foreground",
+                      )}
+                    >
+                      <div
+                        className={cn(
+                          "w-5 h-5 rounded flex items-center justify-center text-xs font-medium flex-shrink-0",
+                          selectedProject === projectId ? "bg-primary-foreground text-primary" : "bg-muted text-muted-foreground",
+                        )}
+                      >
+                        {initial}
+                      </div>
+                      <span className="truncate">{project.name}</span>
+                    </button>
+                  )
+                })
+              )}
             </div>
           </div>
         </div>

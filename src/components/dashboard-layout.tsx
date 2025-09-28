@@ -56,7 +56,11 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
       />
 
       <main className="flex-1 overflow-auto relative z-10 bg-background/80 backdrop-blur-sm">
-        <DashboardContent activeView={activeView} selectedProject={selectedProject} />
+        <DashboardContent 
+          activeView={activeView} 
+          selectedProject={selectedProject}
+          onViewChange={setActiveView}
+        />
       </main>
     </div>
   )

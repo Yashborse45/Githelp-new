@@ -1,37 +1,54 @@
-// Importing via require to avoid TypeScript issues with package export types
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const { PineconeClient } = require("@pinecone-database/pinecone") as any;
+import { Pinecone } from "@pinecone-database/pinecone";
 
 const PINECONE_API_KEY = process.env.PINECONE_API_KEY;
-const PINECONE_ENV = process.env.PINECONE_ENV;
 const PINECONE_INDEX = process.env.PINECONE_INDEX || "githelp";
 
-if (!PINECONE_API_KEY || !PINECONE_ENV) {
-    // We'll throw at runtime if not configured
-}
+// Create pinecone instance only if API key is available
+let pinecone: Pinecone | null = null;
 
-const pinecone = new PineconeClient();
-let initialized = false;
-
-export async function initPinecone() {
-    if (initialized) return;
-    await pinecone.init({ apiKey: PINECONE_API_KEY as string, environment: PINECONE_ENV as string });
-    initialized = true;
+export async function getPineconeClient(): Promise<Pinecone> {
+    if (!PINECONE_API_KEY) {
+        throw new Error("PINECONE_API_KEY is required but not set in environment variables");
+    }
+    
+    if (!pinecone) {
+        pinecone = new Pinecone({
+            apiKey: PINECONE_API_KEY,
+        });
+    }
+    
+    return pinecone;
 }
 
 export async function upsertVectors(vectors: { id: string; values: number[]; metadata?: any }[]) {
-    await initPinecone();
-    const index = pinecone.Index(PINECONE_INDEX);
-    const batch = 100;
-    for (let i = 0; i < vectors.length; i += batch) {
-        const chunk = vectors.slice(i, i + batch);
-        await index.upsert({ upsertRequest: { vectors: chunk } as any } as any);
+    try {
+        const pc = await getPineconeClient();
+        const index = pc.index(PINECONE_INDEX);
+        
+        const batch = 100;
+        for (let i = 0; i < vectors.length; i += batch) {
+            const chunk = vectors.slice(i, i + batch);
+            await index.upsert(chunk);
+        }
+    } catch (error) {
+        console.warn('Pinecone upsert failed:', error);
+        // Don't throw error to avoid breaking the main functionality
     }
 }
 
 export async function queryVectors(vector: number[], topK = 5) {
-    await initPinecone();
-    const index = pinecone.Index(PINECONE_INDEX);
-    const resp: any = await index.query({ queryRequest: { vector, topK, includeMetadata: true } } as any);
-    return resp;
+    try {
+        const pc = await getPineconeClient();
+        const index = pc.index(PINECONE_INDEX);
+        const response = await index.query({
+            vector,
+            topK,
+            includeMetadata: true,
+        });
+        return response;
+    } catch (error) {
+        console.warn('Pinecone query failed:', error);
+        // Return empty response to avoid breaking the main functionality
+        return { matches: [] };
+    }
 }

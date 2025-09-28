@@ -5,17 +5,74 @@ import type React from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { useToast } from "@/hooks/use-toast"
+import { api } from "@/trpc/react"
 import { useState } from "react"
 
-export function CreateProjectForm() {
+interface CreateProjectFormProps {
+  onProjectCreated?: () => void
+}
+
+export function CreateProjectForm({ onProjectCreated }: CreateProjectFormProps = {}) {
   const [projectName, setProjectName] = useState("")
   const [githubUrl, setGithubUrl] = useState("")
   const [githubToken, setGithubToken] = useState("")
+  const { toast } = useToast()
+
+  const utils = api.useContext()
+
+  const createProjectMutation = api.project.create.useMutation({
+    onSuccess: (project) => {
+      toast({
+        title: "Project created successfully!",
+        description: `${project.name} has been linked to your account.`,
+      })
+      // Reset form
+      setProjectName("")
+      setGithubUrl("")
+      setGithubToken("")
+      // Invalidate and refetch projects list
+      utils.project.list.invalidate()
+      // Callback to parent component
+      onProjectCreated?.()
+    },
+    onError: (error) => {
+      toast({
+        title: "Failed to create project",
+        description: error.message,
+        variant: "destructive",
+      })
+    },
+  })
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    // Handle form submission
-    console.log("Creating project:", { projectName, githubUrl, githubToken })
+    
+    if (!projectName.trim() || !githubUrl.trim()) {
+      toast({
+        title: "Missing required fields",
+        description: "Please provide both project name and GitHub URL.",
+        variant: "destructive",
+      })
+      return
+    }
+
+    // Basic GitHub URL validation
+    const githubUrlPattern = /^https:\/\/github\.com\/[a-zA-Z0-9._-]+\/[a-zA-Z0-9._-]+\/?$/
+    if (!githubUrlPattern.test(githubUrl.trim())) {
+      toast({
+        title: "Invalid GitHub URL",
+        description: "Please provide a valid GitHub repository URL (e.g., https://github.com/username/repository)",
+        variant: "destructive",
+      })
+      return
+    }
+
+    createProjectMutation.mutate({
+      name: projectName.trim(),
+      repoUrl: githubUrl.trim(),
+      token: githubToken.trim() || undefined,
+    })
   }
 
   return (
@@ -107,8 +164,12 @@ export function CreateProjectForm() {
               />
             </div>
 
-            <Button type="submit" className="w-full bg-primary hover:bg-primary/90 text-primary-foreground py-3">
-              Check Credits
+            <Button 
+              type="submit" 
+              className="w-full bg-primary hover:bg-primary/90 text-primary-foreground py-3"
+              disabled={createProjectMutation.status === "pending"}
+            >
+              {createProjectMutation.status === "pending" ? "Creating Project..." : "Create Project"}
             </Button>
           </form>
         </div>

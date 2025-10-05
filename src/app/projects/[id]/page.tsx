@@ -10,9 +10,9 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
 interface ProjectPageProps {
-    params: {
+    params: Promise<{
         id: string;
-    };
+    }>;
 }
 
 export default async function ProjectPage({ params }: ProjectPageProps) {

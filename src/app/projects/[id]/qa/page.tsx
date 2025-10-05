@@ -7,12 +7,15 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
 interface ProjectQAPageProps {
-    params: {
+    params: Promise<{
         id: string;
-    };
+    }>;
 }
 
 export default async function ProjectQAPage({ params }: ProjectQAPageProps) {
+    // Await params to fix Next.js 15 issue
+    const { id } = await params;
+
     // Check authentication
     const { userId } = await auth();
     if (!userId) {
@@ -22,7 +25,7 @@ export default async function ProjectQAPage({ params }: ProjectQAPageProps) {
     // Fetch project to verify it exists and user has access
     const project = await db.project.findUnique({
         where: {
-            id: params.id,
+            id: id,
             ownerId: userId // Ensure user owns this project
         },
         select: {
@@ -43,7 +46,7 @@ export default async function ProjectQAPage({ params }: ProjectQAPageProps) {
             <div className="container mx-auto px-4 py-8">
                 {/* Header */}
                 <div className="flex items-center gap-4 mb-8">
-                    <Link href={`/projects/${params.id}`}>
+                    <Link href={`/projects/${id}`}>
                         <Button variant="outline" size="sm" className="flex items-center gap-2">
                             <ArrowLeft className="h-4 w-4" />
                             Back to Project
@@ -60,7 +63,7 @@ export default async function ProjectQAPage({ params }: ProjectQAPageProps) {
                 </div>
 
                 {/* Q&A Component */}
-                <QAComponent projectId={project.id} />
+                <QAComponent projectId={id} />
             </div>
         </div>
     );

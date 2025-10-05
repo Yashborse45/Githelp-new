@@ -2,6 +2,7 @@
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { MarkdownRenderer, preprocessGeminiText } from "@/components/ui/markdown-renderer";
 import { Textarea } from "@/components/ui/textarea";
 import { askQuestion, getQAHistory, type Citation } from "@/lib/ask-api";
 import { Bot, Loader2, MessageCircle, Send, User } from "lucide-react";
@@ -159,22 +160,22 @@ export default function QAComponent({ projectId }: QAComponentProps) {
                         </Button>
                     </div>
                     {error && (
-                        <div className="text-sm text-red-600 bg-red-50 border border-red-200 p-3 rounded-md animate-slide-in">
+                        <div className="text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 p-3 rounded-md animate-slide-in">
                             {error}
                         </div>
                     )}
 
                     {/* Loading State */}
                     {isLoading && (
-                        <div className="bg-blue-50 border border-blue-200 p-4 rounded-lg animate-slide-in">
+                        <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 p-4 rounded-lg animate-slide-in">
                             <div className="flex items-center gap-3">
-                                <Loader2 className="h-5 w-5 animate-spin text-blue-600" />
+                                <Loader2 className="h-5 w-5 animate-spin text-blue-600 dark:text-blue-400" />
                                 <div className="flex-1">
-                                    <p className="text-blue-800 font-medium">AI is analyzing your question...</p>
+                                    <p className="text-blue-800 dark:text-blue-200 font-medium">AI is analyzing your question...</p>
                                     <div className="flex gap-1 mt-2">
-                                        <div className="w-2 h-2 bg-blue-400 rounded-full animate-bounce"></div>
-                                        <div className="w-2 h-2 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
-                                        <div className="w-2 h-2 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                                        <div className="w-2 h-2 bg-blue-400 dark:bg-blue-500 rounded-full animate-bounce"></div>
+                                        <div className="w-2 h-2 bg-blue-400 dark:bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+                                        <div className="w-2 h-2 bg-blue-400 dark:bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
                                     </div>
                                 </div>
                             </div>
@@ -196,8 +197,8 @@ export default function QAComponent({ projectId }: QAComponentProps) {
                                 <div className="flex items-start gap-3">
                                     <User className="h-5 w-5 mt-1 text-blue-600" />
                                     <div className="flex-1">
-                                        <h4 className="font-medium text-blue-700 mb-2">You asked:</h4>
-                                        <p className="text-gray-700 bg-blue-50 p-3 rounded-lg">{pendingAnswer.question}</p>
+                                        <h4 className="font-medium text-blue-700 dark:text-blue-400 mb-2">You asked:</h4>
+                                        <p className="text-gray-700 dark:text-gray-300 bg-blue-50 dark:bg-blue-950/30 p-3 rounded-lg border border-blue-200 dark:border-blue-800">{pendingAnswer.question}</p>
                                     </div>
                                 </div>
 
@@ -205,17 +206,19 @@ export default function QAComponent({ projectId }: QAComponentProps) {
                                 <div className="flex items-start gap-3">
                                     <Bot className="h-5 w-5 mt-1 text-green-600 animate-pulse" />
                                     <div className="flex-1">
-                                        <h4 className="font-medium text-green-700 mb-2 flex items-center gap-2">
+                                        <h4 className="font-medium text-green-700 dark:text-green-400 mb-2 flex items-center gap-2">
                                             AI Assistant
-                                            <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full animate-pulse">
+                                            <span className="text-xs bg-green-100 dark:bg-green-900/50 text-green-800 dark:text-green-300 px-2 py-1 rounded-full animate-pulse">
                                                 typing...
                                             </span>
                                         </h4>
-                                        <div className="bg-green-50 p-3 rounded-lg border border-green-200">
-                                            <p className="text-gray-700 whitespace-pre-wrap">
-                                                {currentAnswer}
-                                                <span className="inline-block w-0.5 h-5 bg-green-600 ml-1 animate-pulse"></span>
-                                            </p>
+                                        <div className="bg-green-50 dark:bg-green-950/30 p-3 rounded-lg border border-green-200 dark:border-green-800">
+                                            <MarkdownRenderer
+                                                content={preprocessGeminiText(currentAnswer)}
+                                                variant="compact"
+                                                className="text-sm"
+                                            />
+                                            <span className="inline-block w-0.5 h-5 bg-green-600 ml-1 animate-pulse"></span>
                                         </div>
                                     </div>
                                 </div>
@@ -229,7 +232,7 @@ export default function QAComponent({ projectId }: QAComponentProps) {
                     <Card>
                         <CardContent className="text-center py-8 text-muted-foreground">
                             <MessageCircle className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                            <p>No questions asked yet. Ask your first question above!</p>
+                            <p className="text-foreground">No questions asked yet. Ask your first question above!</p>
                         </CardContent>
                     </Card>
                 ) : (
@@ -245,8 +248,8 @@ export default function QAComponent({ projectId }: QAComponentProps) {
                                     <div className="flex items-start gap-3">
                                         <User className="h-5 w-5 mt-1 text-blue-600" />
                                         <div className="flex-1">
-                                            <h4 className="font-medium text-blue-700 mb-2">You asked:</h4>
-                                            <p className="text-gray-700 bg-blue-50 p-3 rounded-lg">{qa.question}</p>
+                                            <h4 className="font-medium text-blue-700 dark:text-blue-400 mb-2">You asked:</h4>
+                                            <p className="text-gray-700 dark:text-gray-300 bg-blue-50 dark:bg-blue-950/30 p-3 rounded-lg border border-blue-200 dark:border-blue-800">{qa.question}</p>
                                         </div>
                                     </div>
 
@@ -254,11 +257,12 @@ export default function QAComponent({ projectId }: QAComponentProps) {
                                     <div className="flex items-start gap-3">
                                         <Bot className="h-5 w-5 mt-1 text-green-600" />
                                         <div className="flex-1">
-                                            <h4 className="font-medium text-green-700 mb-2">AI Assistant:</h4>
-                                            <div className="bg-green-50 p-3 rounded-lg">
-                                                <div className="prose prose-sm max-w-none">
-                                                    <p className="text-gray-700 whitespace-pre-wrap">{qa.answer}</p>
-                                                </div>
+                                            <h4 className="font-medium text-green-700 dark:text-green-400 mb-2">AI Assistant:</h4>
+                                            <div className="bg-green-50 dark:bg-green-950/30 p-3 rounded-lg border border-green-200 dark:border-green-800">
+                                                <MarkdownRenderer
+                                                    content={preprocessGeminiText(qa.answer)}
+                                                    variant="compact"
+                                                />
                                             </div>
                                         </div>
                                     </div>
@@ -266,18 +270,18 @@ export default function QAComponent({ projectId }: QAComponentProps) {
                                     {/* Citations */}
                                     {qa.citations && qa.citations.length > 0 && (
                                         <div>
-                                            <h4 className="font-medium text-gray-700 mb-2">Sources:</h4>
+                                            <h4 className="font-medium text-gray-700 dark:text-gray-300 mb-2">Sources:</h4>
                                             <div className="space-y-2">
                                                 {qa.citations.map((citation, index) => (
                                                     <div
                                                         key={index}
-                                                        className="text-sm bg-gray-50 p-2 rounded border-l-2 border-gray-300"
+                                                        className="text-sm bg-gray-50 dark:bg-gray-900/50 p-2 rounded border-l-2 border-gray-300 dark:border-gray-600"
                                                     >
-                                                        <div className="font-mono text-xs text-blue-600 mb-1">
+                                                        <div className="font-mono text-xs text-blue-600 dark:text-blue-400 mb-1">
                                                             {citation.path}
                                                         </div>
                                                         {citation.excerpt && (
-                                                            <div className="text-gray-600 text-xs truncate">
+                                                            <div className="text-gray-600 dark:text-gray-400 text-xs truncate">
                                                                 {citation.excerpt}
                                                             </div>
                                                         )}
@@ -288,7 +292,7 @@ export default function QAComponent({ projectId }: QAComponentProps) {
                                     )}
 
                                     {/* Timestamp */}
-                                    <div className="text-xs text-gray-500 border-t pt-2">
+                                    <div className="text-xs text-gray-500 dark:text-gray-400 border-t border-gray-200 dark:border-gray-700 pt-2">
                                         Asked on {new Date(qa.createdAt).toLocaleString()}
                                     </div>
                                 </div>

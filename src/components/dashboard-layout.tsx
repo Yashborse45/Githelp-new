@@ -7,11 +7,11 @@ import type React from "react"
 import { useEffect, useState } from "react"
 
 import { DashboardContent } from "@/components/dashboard-content"
-import { Sidebar } from "@/components/sidebar"
 import { OnboardingFlow, useOnboarding } from "@/components/onboarding/onboarding-flow"
-import { useErrorHandler } from "@/hooks/use-error-handler"
-import { LoadingIndicator } from "@/components/ui/loading-indicator"
+import { Sidebar } from "@/components/sidebar"
 import { ErrorBoundaryDisplay } from "@/components/ui/error-display"
+import { LoadingIndicator } from "@/components/ui/loading-indicator"
+import { useErrorHandler } from "@/hooks/use-error-handler"
 
 interface DashboardLayoutProps {
   children?: React.ReactNode
@@ -23,10 +23,10 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   const { isLoaded, isSignedIn } = useUser()
   const router = useRouter()
   const { toast } = useToast()
-  
+
   // Enhanced error handling
   const { errors, handleError, clearErrors } = useErrorHandler()
-  
+
   // Onboarding system
   const { showOnboarding, completeOnboarding, skipOnboarding } = useOnboarding()
 
@@ -95,7 +95,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
               />
             </div>
           )}
-          
+
           <DashboardContent
             activeView={activeView}
             selectedProject={selectedProject}

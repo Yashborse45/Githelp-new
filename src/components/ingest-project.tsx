@@ -1,14 +1,13 @@
 'use client';
 
+import { useLoadingState } from '@/hooks/use-loading';
 import { api } from '@/trpc/react';
-import { AlertCircle, CheckCircle, Database, Loader2, RefreshCw } from 'lucide-react';
+import { CheckCircle, Database, Loader2 } from 'lucide-react';
 import { useState } from 'react';
 import { Button } from './ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
-import { Progress } from './ui/progress';
-import { useLoadingState } from '@/hooks/use-loading';
-import { LoadingIndicator } from './ui/loading-indicator';
 import { ErrorDisplay } from './ui/error-display';
+import { LoadingIndicator } from './ui/loading-indicator';
 
 interface IngestProjectProps {
     projectId: string;

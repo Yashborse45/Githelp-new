@@ -50,29 +50,31 @@ export default function QAComponent({ projectId }: QAComponentProps) {
         }
     };
 
-    // Typing effect for answers - slower and more realistic
+    // Typing effect for answers - fast and smooth
     const typeAnswer = (answer: string, qaItem: QAItem) => {
         setIsTyping(true);
         setCurrentAnswer("");
         setPendingAnswer(qaItem);
 
         let index = 0;
-        const typeSpeed = 20; // Slower typing for better UX
+        const typeSpeed = 3; // Very fast typing speed
+        const charsPerFrame = answer.length > 500 ? 3 : 1; // Type multiple chars for long responses
 
         const timer = setInterval(() => {
             if (index < answer.length) {
-                setCurrentAnswer(prev => prev + answer[index]);
-                index++;
+                const nextChars = answer.slice(index, index + charsPerFrame);
+                setCurrentAnswer(prev => prev + nextChars);
+                index += charsPerFrame;
             } else {
                 clearInterval(timer);
-                // Small delay before finishing typing animation
+                // Quick transition to complete answer
                 setTimeout(() => {
                     setIsTyping(false);
                     // Add the complete answer to history with animation
                     setQAHistory(prev => [qaItem, ...prev]);
                     setPendingAnswer(null);
                     setCurrentAnswer("");
-                }, 500);
+                }, 100);
             }
         }, typeSpeed);
     };

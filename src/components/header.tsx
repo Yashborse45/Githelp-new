@@ -1,22 +1,10 @@
 "use client"
 
 import { GradientButton } from "@/components/gradient-button"
+import { Logo } from "@/components/logo"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { Button } from "@/components/ui/button"
 import { useRouter } from "next/navigation"
-
-const CodeIcon = () => (
-  <svg className="h-4 w-4 text-white" fill="currentColor" viewBox="0 0 24 24">
-    <path
-      d="M8.5 6l-5.5 6 5.5 6M15.5 6l5.5 6-5.5 6"
-      stroke="currentColor"
-      strokeWidth="2"
-      fill="none"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-  </svg>
-)
 
 export function Header() {
   const router = useRouter()
@@ -26,7 +14,7 @@ export function Header() {
         {/* Logo and Brand */}
         <div className="flex items-center space-x-2">
           <div className="flex items-center justify-center w-8 h-8 rounded-md bg-gradient-primary">
-            <CodeIcon />
+            <Logo className="h-4 w-4 text-white" />
           </div>
           <span className="text-xl font-bold text-foreground">GitHelp</span>
         </div>

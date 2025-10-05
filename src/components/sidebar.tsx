@@ -4,15 +4,15 @@ import { ThemeToggle } from "@/components/theme-toggle"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuTrigger,
+} from "@/components/ui/context-menu"
 import { cn } from "@/lib/utils"
 import { api } from "@/trpc/react"
 import { useClerk, useUser } from "@clerk/nextjs"
+import { ExternalLink, LogOut, MessageCircle } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useState } from "react"
 
@@ -54,7 +54,8 @@ export function Sidebar({ activeView, onViewChange, selectedProject, onProjectCh
 
   const handleProjectClick = (projectId: string) => {
     if (selectedProject === projectId) {
-      onProjectChange(null)
+      // If already selected, navigate to project page
+      router.push(`/projects/${projectId}`)
     } else {
       onProjectChange(projectId)
     }
@@ -145,25 +146,42 @@ export function Sidebar({ activeView, onViewChange, selectedProject, onProjectCh
                   const initial = project.name.charAt(0).toUpperCase()
                   const isSelected = selectedProject === project.id
                   return (
-                    <button
-                      key={project.id}
-                      onClick={() => handleProjectClick(project.id)}
-                      className={cn(
-                        "w-full text-left px-3 py-2 rounded-md text-sm transition-colors flex items-center space-x-2",
-                        "hover:bg-muted hover:text-foreground",
-                        isSelected ? "bg-primary text-primary-foreground" : "text-foreground",
-                      )}
-                    >
-                      <div
-                        className={cn(
-                          "w-5 h-5 rounded flex items-center justify-center text-xs font-medium flex-shrink-0",
-                          isSelected ? "bg-primary-foreground text-primary" : "bg-muted text-muted-foreground",
-                        )}
-                      >
-                        {initial}
-                      </div>
-                      <span className="truncate">{project.name}</span>
-                    </button>
+                    <ContextMenu key={project.id}>
+                      <ContextMenuTrigger asChild>
+                        <button
+                          onClick={() => handleProjectClick(project.id)}
+                          className={cn(
+                            "w-full text-left px-3 py-2 rounded-md text-sm transition-colors flex items-center space-x-2",
+                            "hover:bg-muted hover:text-foreground",
+                            isSelected ? "bg-primary text-primary-foreground" : "text-foreground",
+                          )}
+                        >
+                          <div
+                            className={cn(
+                              "w-5 h-5 rounded flex items-center justify-center text-xs font-medium flex-shrink-0",
+                              isSelected ? "bg-primary-foreground text-primary" : "bg-muted text-muted-foreground",
+                            )}
+                          >
+                            {initial}
+                          </div>
+                          <span className="truncate">{project.name}</span>
+                        </button>
+                      </ContextMenuTrigger>
+                      <ContextMenuContent>
+                        <ContextMenuItem onClick={() => router.push(`/projects/${project.id}`)}>
+                          <ExternalLink className="h-4 w-4 mr-2" />
+                          Open Project Page
+                        </ContextMenuItem>
+                        <ContextMenuItem onClick={() => router.push(`/projects/${project.id}/qa`)}>
+                          <MessageCircle className="h-4 w-4 mr-2" />
+                          Q&A Page
+                        </ContextMenuItem>
+                        <ContextMenuItem onClick={() => window.open(project.repoUrl, '_blank')}>
+                          <ExternalLink className="h-4 w-4 mr-2" />
+                          View on GitHub
+                        </ContextMenuItem>
+                      </ContextMenuContent>
+                    </ContextMenu>
                   )
                 })
               )}
@@ -186,10 +204,36 @@ export function Sidebar({ activeView, onViewChange, selectedProject, onProjectCh
         )}
 
         {/* User Profile */}
-        <div className="flex items-center justify-between">
-          {!isCollapsed ? (
-            <>
-              <div className="flex items-center space-x-3">
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            {!isCollapsed ? (
+              <>
+                <div className="flex items-center space-x-3">
+                  <Avatar className="h-8 w-8">
+                    <AvatarImage
+                      src={user?.imageUrl || "/placeholder.svg?height=32&width=32"}
+                      alt={user?.fullName || user?.username || "User"}
+                    />
+                    <AvatarFallback>
+                      {(user?.firstName?.[0] || user?.username?.[0] || "U").toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="min-w-0 flex-1">
+                    <div className="text-sm font-medium text-foreground truncate">
+                      {!isLoaded ? "Loading..." : user?.fullName || user?.username || "User"}
+                    </div>
+                    <div className="text-xs text-muted-foreground truncate">
+                      {!isLoaded
+                        ? "Fetching user…"
+                        : user?.primaryEmailAddress?.emailAddress || user?.emailAddresses?.[0]?.emailAddress || ""}
+                    </div>
+                  </div>
+                </div>
+
+                <ThemeToggle />
+              </>
+            ) : (
+              <div className="flex flex-col items-center space-y-2">
                 <Avatar className="h-8 w-8">
                   <AvatarImage
                     src={user?.imageUrl || "/placeholder.svg?height=32&width=32"}
@@ -199,97 +243,45 @@ export function Sidebar({ activeView, onViewChange, selectedProject, onProjectCh
                     {(user?.firstName?.[0] || user?.username?.[0] || "U").toUpperCase()}
                   </AvatarFallback>
                 </Avatar>
-                <div className="min-w-0 flex-1">
-                  <div className="text-sm font-medium text-foreground truncate">
-                    {!isLoaded ? "Loading..." : user?.fullName || user?.username || "User"}
-                  </div>
-                  <div className="text-xs text-muted-foreground truncate">
-                    {!isLoaded
-                      ? "Fetching user…"
-                      : user?.primaryEmailAddress?.emailAddress || user?.emailAddresses?.[0]?.emailAddress || ""}
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex items-center space-x-1">
                 <ThemeToggle />
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon" className="h-8 w-8">
-                      <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
-                        />
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-                        />
-                      </svg>
-                      <span className="sr-only">User menu</span>
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-56">
-                    <DropdownMenuItem>
-                      <svg className="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
-                        />
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M15 12a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
-                        />
-                      </svg>
-                      Settings
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem
-                      className="text-destructive"
-                      onClick={async () => {
-                        try {
-                          await signOut({ redirectUrl: "/" })
-                        } catch (e) {
-                          console.error("Sign out failed", e)
-                          router.push("/")
-                        }
-                      }}
-                    >
-                      <svg className="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013 3v1"
-                        />
-                      </svg>
-                      {isSignedIn ? "Log Out" : "Sign In"}
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                  onClick={async () => {
+                    try {
+                      await signOut({ redirectUrl: "/" })
+                    } catch (e) {
+                      console.error("Sign out failed", e)
+                      router.push("/")
+                    }
+                  }}
+                  title={isSignedIn ? "Log Out" : "Sign In"}
+                >
+                  <LogOut className="h-4 w-4" />
+                </Button>
               </div>
-            </>
-          ) : (
-            <div className="flex flex-col items-center space-y-2">
-              <Avatar className="h-8 w-8">
-                <AvatarImage
-                  src={user?.imageUrl || "/placeholder.svg?height=32&width=32"}
-                  alt={user?.fullName || user?.username || "User"}
-                />
-                <AvatarFallback>
-                  {(user?.firstName?.[0] || user?.username?.[0] || "U").toUpperCase()}
-                </AvatarFallback>
-              </Avatar>
-              <ThemeToggle />
-            </div>
+            )}
+          </div>
+
+          {/* Logout Button */}
+          {!isCollapsed && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="w-full justify-start text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+              onClick={async () => {
+                try {
+                  await signOut({ redirectUrl: "/" })
+                } catch (e) {
+                  console.error("Sign out failed", e)
+                  router.push("/")
+                }
+              }}
+            >
+              <LogOut className="h-4 w-4 mr-2" />
+              {isSignedIn ? "Log Out" : "Sign In"}
+            </Button>
           )}
         </div>
       </div>

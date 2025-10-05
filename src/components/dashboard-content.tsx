@@ -2,11 +2,14 @@
 
 import { CommitCard } from "@/components/commit-card"
 import { CreateProjectForm } from "@/components/create-project-form"
+import QAComponent from "@/components/qa-component"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { api } from "@/trpc/react"
+import { ExternalLink } from "lucide-react"
+import Link from "next/link"
 import { useState } from "react"
 
 const savedQuestions = [
@@ -32,13 +35,14 @@ interface DashboardContentProps {
   activeView: string
   selectedProject: string | null
   onViewChange?: (view: string) => void
+  onProjectChange?: (projectId: string) => void
 }
 
 function CitationsList({ citationsJson }: { citationsJson: string }) {
   try {
     const citations = JSON.parse(citationsJson)
     if (!Array.isArray(citations) || citations.length === 0) return null
-    
+
     return (
       <div className="mt-3 border-t border-border/50 pt-3">
         <h4 className="text-xs font-medium text-muted-foreground mb-2">References:</h4>
@@ -56,21 +60,21 @@ function CitationsList({ citationsJson }: { citationsJson: string }) {
   }
 }
 
-export function DashboardContent({ activeView, selectedProject, onViewChange }: DashboardContentProps) {
+export function DashboardContent({ activeView, selectedProject, onViewChange, onProjectChange }: DashboardContentProps) {
   // Local state for Q&A interaction
   const [question, setQuestion] = useState("")
   const [dashboardQuestion, setDashboardQuestion] = useState("Which file should I edit to change the home page?")
   const [showAnswerBox, setShowAnswerBox] = useState(false)
-  
+
   // Fetch projects data
   const { data: projects = [], isLoading: projectsLoading } = api.project.list.useQuery()
-  
+
   // Fetch commits for selected project
   const { data: commits = [], isLoading: commitsLoading } = api.commit.getRecent.useQuery(
     { projectId: selectedProject!, limit: 5 },
     { enabled: !!selectedProject }
   )
-  
+
   const qaMutation = api.qa.ask.useMutation({
     onSuccess: () => setShowAnswerBox(true),
   })
@@ -99,77 +103,33 @@ export function DashboardContent({ activeView, selectedProject, onViewChange }: 
 
   if (activeView === "create-project") {
     return (
-      <CreateProjectForm 
+      <CreateProjectForm
         onProjectCreated={() => {
           // Switch back to dashboard view after project creation
           onViewChange?.("dashboard")
-        }} 
+        }}
       />
     )
   }
 
   if (activeView === "qa") {
-    return (
-      <div className="flex-1 p-6 overflow-auto">
-        <div className="mb-6">
-          <h1 className="text-2xl font-bold text-foreground mb-4">Ask a question</h1>
-          <div className="mb-4 w-full max-w-2xl space-y-2">
-            <Input
-              placeholder="Ask something about this repo..."
-              value={question}
-              onChange={(e) => setQuestion(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && !e.shiftKey) {
-                  e.preventDefault()
-                  handleAsk()
-                }
-              }}
-            />
-            <div className="flex gap-2">
-              <Button
-                disabled={!question.trim() || loading || !selectedProject}
-                onClick={handleAsk}
-                className="bg-primary hover:bg-primary/90 text-primary-foreground"
-              >
-                {loading ? "Thinking..." : "Ask GitHelp!"}
-              </Button>
-              {error && <span className="text-destructive text-sm">{error.message}</span>}
-            </div>
-            {showAnswerBox && (
-              <div className="mt-4 border border-border rounded-md p-4 bg-card/50 backdrop-blur">
-                <h3 className="text-sm font-semibold mb-2">Answer</h3>
-                <p className="text-sm whitespace-pre-wrap leading-relaxed">
-                  {qaMutation.data?.answer?.answer || (loading ? "Generating..." : "")}
-                </p>
-                {qaMutation.data?.answer?.citations && (
-                  <CitationsList citationsJson={qaMutation.data.answer.citations} />
-                )}
-              </div>
-            )}
+    if (!selectedProject) {
+      return (
+        <div className="flex-1 p-6 overflow-auto">
+          <div className="text-center py-12">
+            <Alert className="max-w-md mx-auto">
+              <AlertDescription>
+                Please select a project from the sidebar to start asking questions.
+              </AlertDescription>
+            </Alert>
           </div>
         </div>
+      )
+    }
 
-        {selectedProject && (
-          <div className="space-y-4">
-            <h2 className="text-lg font-semibold text-foreground">Saved Questions</h2>
-            <div className="grid gap-3">
-              {savedQuestions.map((sq) => (
-                <div
-                  key={sq.id}
-                  className="border border-border rounded-lg p-4 bg-card hover:bg-card/80 transition-colors cursor-pointer"
-                  onClick={() => setQuestion(sq.question)}
-                >
-                  <div className="flex items-start justify-between mb-2">
-                    <h3 className="font-medium text-foreground">{sq.question}</h3>
-                    <span className="text-xs text-muted-foreground">{sq.timestamp}</span>
-                  </div>
-                  <p className="text-sm text-muted-foreground">{sq.preview}</p>
-                  <div className="mt-2 text-xs text-muted-foreground">by {sq.author}</div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
+    return (
+      <div className="flex-1 p-6 overflow-auto">
+        <QAComponent projectId={selectedProject} />
       </div>
     )
   }
@@ -200,7 +160,7 @@ export function DashboardContent({ activeView, selectedProject, onViewChange }: 
               </div>
               <span className="text-sm">This project is linked to</span>
             </div>
-            
+
             {currentProject ? (
               <div className="space-y-4">
                 <div className="flex items-center gap-3">
@@ -212,8 +172,16 @@ export function DashboardContent({ activeView, selectedProject, onViewChange }: 
                     <p className="font-medium text-foreground">{currentProject.repoOwner}/{currentProject.repoName}</p>
                     <p className="text-sm text-muted-foreground">{currentProject.repoUrl}</p>
                   </div>
+                  <div className="ml-auto">
+                    <Button asChild variant="outline" size="sm">
+                      <Link href={`/projects/${currentProject.id}`}>
+                        <ExternalLink className="h-4 w-4 mr-2" />
+                        View Project
+                      </Link>
+                    </Button>
+                  </div>
                 </div>
-                
+
                 {/* Ask question section */}
                 <div className="mt-6 space-y-3">
                   <Input
@@ -234,7 +202,7 @@ export function DashboardContent({ activeView, selectedProject, onViewChange }: 
             ) : (
               <div className="text-center py-8">
                 <p className="text-muted-foreground mb-4">No project selected</p>
-                <Button 
+                <Button
                   onClick={() => onViewChange?.("create-project")}
                   variant="outline"
                 >
@@ -256,8 +224,8 @@ export function DashboardContent({ activeView, selectedProject, onViewChange }: 
               <div className="space-y-3">
                 {commits.length > 0 ? (
                   commits.map((commit) => (
-                    <CommitCard 
-                      key={commit.sha} 
+                    <CommitCard
+                      key={commit.sha}
                       author={commit.author || "Unknown"}
                       message={commit.message}
                       pullRequest={commit.pullRequest}
@@ -278,6 +246,52 @@ export function DashboardContent({ activeView, selectedProject, onViewChange }: 
                     <p className="text-sm text-muted-foreground">This could be due to repository permissions or network issues.</p>
                   </div>
                 ) : null}
+              </div>
+            </div>
+          )}
+
+          {/* All Projects Overview - shown when no project is selected */}
+          {!selectedProject && projects.length > 0 && (
+            <div className="border border-border rounded-lg p-6 bg-card">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-semibold text-foreground">Your Projects</h2>
+                <Button
+                  onClick={() => onViewChange?.("create-project")}
+                  variant="outline"
+                  size="sm"
+                >
+                  Create New
+                </Button>
+              </div>
+              <div className="grid gap-3">
+                {projects.map((project) => (
+                  <div key={project.id} className="flex items-center justify-between p-3 border border-border rounded-md hover:bg-muted/50 transition-colors">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-sm font-medium text-primary">
+                        {project.name.charAt(0).toUpperCase()}
+                      </div>
+                      <div>
+                        <p className="font-medium text-foreground">{project.name}</p>
+                        <p className="text-sm text-muted-foreground">{project.repoOwner}/{project.repoName}</p>
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button
+                        onClick={() => onProjectChange?.(project.id)}
+                        variant="outline"
+                        size="sm"
+                      >
+                        Select
+                      </Button>
+                      <Button asChild variant="default" size="sm">
+                        <Link href={`/projects/${project.id}`}>
+                          <ExternalLink className="h-4 w-4 mr-1" />
+                          View
+                        </Link>
+                      </Button>
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
           )}

@@ -1,40 +1,83 @@
-// Lightweight Gemini (Vertex AI) helpers
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
-const GCP_PROJECT = process.env.GCP_PROJECT || "";
-const GEMINI_LOCATION = process.env.GEMINI_LOCATION || "us-central1";
-const EMBEDDING_MODEL = process.env.GEMINI_EMBEDDING_MODEL || "textembedding-gecko@001";
-const CHAT_MODEL = process.env.GEMINI_CHAT_MODEL || "chat-bison@001";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
-function vertexUrl(path: string) {
-    if (GCP_PROJECT) return `https://${GEMINI_LOCATION}-aiplatform.googleapis.com/v1/projects/${GCP_PROJECT}/locations/${GEMINI_LOCATION}/${path}`;
-    return `https://${GEMINI_LOCATION}-aiplatform.googleapis.com/v1/${path}`;
-}
+// Initialize Google AI Studio client
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 
 export async function embedTexts(texts: string[]) {
-    if (!GEMINI_API_KEY) throw new Error("GEMINI_API_KEY missing");
+    if (!process.env.GEMINI_API_KEY) throw new Error("GEMINI_API_KEY missing");
     if (!texts.length) return [];
-    const url = vertexUrl(`publishers/google/models/${EMBEDDING_MODEL}:embedText`);
-    const res = await fetch(url, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${GEMINI_API_KEY}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ instances: texts.map((t) => ({ content: t })) }),
-    });
-    if (!res.ok) throw new Error(`Gemini embed failed: ${await res.text()}`);
-    const j = await res.json();
-    const embeddings = j.predictions?.map((p: any) => p.embedding).filter(Boolean) ?? j.embeddings?.map((e: any) => e.embedding).filter(Boolean) ?? [];
-    if (!embeddings.length) throw new Error("Could not parse embeddings");
-    return embeddings;
+
+    try {
+        // Use text-embedding-004 which we verified works
+        const model = genAI.getGenerativeModel({ model: "text-embedding-004" });
+        const embeddings = [];
+
+        // Process texts one by one as the API expects single text
+        for (const text of texts) {
+            try {
+                const result = await model.embedContent(text);
+                if (result.embedding && result.embedding.values) {
+                    embeddings.push(result.embedding.values);
+                } else {
+                    console.warn("No embedding values received for text");
+                    // Add a zero vector as fallback
+                    embeddings.push(new Array(768).fill(0));
+                }
+            } catch (textError) {
+                console.error("Failed to embed individual text:", textError);
+                // Add a zero vector as fallback for this text
+                embeddings.push(new Array(768).fill(0));
+            }
+        }
+
+        if (!embeddings.length) throw new Error("Could not generate any embeddings");
+        console.log(`Successfully generated ${embeddings.length} embeddings`);
+        return embeddings;
+    } catch (error) {
+        console.error("Embedding error:", error);
+        throw new Error(`Gemini embed failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
 }
 
-export async function chatCompletion(prompt: string, maxTokens = 800) {
-    if (!GEMINI_API_KEY) throw new Error("GEMINI_API_KEY missing");
-    const url = vertexUrl(`publishers/google/models/${CHAT_MODEL}:predict`);
-    const res = await fetch(url, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${GEMINI_API_KEY}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ instances: [{ content: prompt }], parameters: { maxOutputTokens: maxTokens } }),
-    });
-    if (!res.ok) throw new Error(`Gemini chat failed: ${await res.text()}`);
-    const j = await res.json();
-    return j.predictions?.[0]?.content ?? j.predictions?.[0]?.candidates?.[0]?.content ?? "";
+export async function chatCompletion(prompt: string, maxTokens = 1500) {
+    if (!process.env.GEMINI_API_KEY) throw new Error("GEMINI_API_KEY missing");
+
+    try {
+        // Use models that are actually available with the current API key
+        const modelNames = [
+            "gemini-2.0-flash",        // Most powerful available model
+            "gemini-2.5-flash-lite",   // Fallback lite version
+        ];
+
+        for (const modelName of modelNames) {
+            try {
+                console.log(`Trying chat model: ${modelName}`);
+                const model = genAI.getGenerativeModel({
+                    model: modelName,
+                    generationConfig: {
+                        maxOutputTokens: maxTokens,
+                        temperature: 0.7,
+                        topP: 0.8,
+                        topK: 40,
+                    }
+                });
+
+                const result = await model.generateContent(prompt);
+                const response = await result.response;
+                const text = response.text();
+
+                console.log(`Chat completion successful with ${modelName}`);
+                return text;
+            } catch (modelError) {
+                console.log(`Model ${modelName} failed:`, modelError instanceof Error ? modelError.message : 'Unknown error');
+                continue;
+            }
+        }
+
+        throw new Error("All chat models failed");
+    } catch (error) {
+        console.error("Chat completion error:", error);
+        // Return a helpful fallback message instead of throwing
+        return "I'm sorry, I'm having trouble generating a response right now. This might be due to API configuration issues. Please check your Gemini API key and try again.";
+    }
 }

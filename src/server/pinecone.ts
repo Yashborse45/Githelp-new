@@ -10,13 +10,13 @@ export async function getPineconeClient(): Promise<Pinecone> {
     if (!PINECONE_API_KEY) {
         throw new Error("PINECONE_API_KEY is required but not set in environment variables");
     }
-    
+
     if (!pinecone) {
         pinecone = new Pinecone({
             apiKey: PINECONE_API_KEY,
         });
     }
-    
+
     return pinecone;
 }
 
@@ -24,7 +24,7 @@ export async function upsertVectors(vectors: { id: string; values: number[]; met
     try {
         const pc = await getPineconeClient();
         const index = pc.index(PINECONE_INDEX);
-        
+
         const batch = 100;
         for (let i = 0; i < vectors.length; i += batch) {
             const chunk = vectors.slice(i, i + batch);
@@ -36,15 +36,25 @@ export async function upsertVectors(vectors: { id: string; values: number[]; met
     }
 }
 
-export async function queryVectors(vector: number[], topK = 5) {
+export async function queryVectors(vector: number[], topK = 5, projectId?: string) {
     try {
         const pc = await getPineconeClient();
         const index = pc.index(PINECONE_INDEX);
-        const response = await index.query({
+
+        const queryOptions: any = {
             vector,
             topK,
             includeMetadata: true,
-        });
+        };
+
+        // Filter by project ID if provided
+        if (projectId) {
+            queryOptions.filter = {
+                projectId: { $eq: projectId }
+            };
+        }
+
+        const response = await index.query(queryOptions);
         return response;
     } catch (error) {
         console.warn('Pinecone query failed:', error);

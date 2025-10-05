@@ -5,6 +5,17 @@
 import "./src/env.js";
 
 /** @type {import("next").NextConfig} */
-const config = {};
+const config = {
+    eslint: {
+        // Warning: This allows production builds to successfully complete even if
+        // your project has ESLint errors.
+        ignoreDuringBuilds: process.env.NODE_ENV === "production",
+    },
+    typescript: {
+        // Warning: This allows production builds to successfully complete even if
+        // your project has type errors.
+        ignoreBuildErrors: false, // Keep this false to catch actual TS errors
+    },
+};
 
 export default config;

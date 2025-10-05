@@ -24,8 +24,8 @@ export const postRouter = createTRPCRouter({
     }),
 
   getLatest: protectedProcedure.query(async ({ ctx }) => {
-    // No posts table — return null
-    return null;
+    // No posts table — return null with proper typing
+    return null as { id: string; name: string; createdById: string } | null;
   }),
 
   getSecretMessage: protectedProcedure.query(() => {

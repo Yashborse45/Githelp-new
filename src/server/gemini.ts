@@ -42,42 +42,43 @@ export async function embedTexts(texts: string[]) {
 export async function chatCompletion(prompt: string, maxTokens = 1500) {
     if (!process.env.GEMINI_API_KEY) throw new Error("GEMINI_API_KEY missing");
 
-    try {
-        // Use models that are actually available with the current API key
-        const modelNames = [
-            "gemini-2.0-flash",        // Most powerful available model
-            "gemini-2.5-flash-lite",   // Fallback lite version
-        ];
+    // List of verified working models (tested on Oct 2025)
+    const modelNames = [
+        "gemini-2.0-flash-exp",    // Experimental - latest features
+        "gemini-2.0-flash",        // Stable - most powerful
+        "gemini-2.5-flash-lite",   // Lite version - faster
+    ];
 
-        for (const modelName of modelNames) {
-            try {
-                console.log(`Trying chat model: ${modelName}`);
-                const model = genAI.getGenerativeModel({
-                    model: modelName,
-                    generationConfig: {
-                        maxOutputTokens: maxTokens,
-                        temperature: 0.7,
-                        topP: 0.8,
-                        topK: 40,
-                    }
-                });
+    let lastError: Error | null = null;
 
-                const result = await model.generateContent(prompt);
-                const response = await result.response;
-                const text = response.text();
+    for (const modelName of modelNames) {
+        try {
+            console.log(`Trying chat model: ${modelName}`);
+            const model = genAI.getGenerativeModel({
+                model: modelName,
+                generationConfig: {
+                    maxOutputTokens: maxTokens,
+                    temperature: 0.7,
+                    topP: 0.8,
+                    topK: 40,
+                }
+            });
 
-                console.log(`Chat completion successful with ${modelName}`);
-                return text;
-            } catch (modelError) {
-                console.log(`Model ${modelName} failed:`, modelError instanceof Error ? modelError.message : 'Unknown error');
-                continue;
-            }
+            const result = await model.generateContent(prompt);
+            const response = await result.response;
+            const text = response.text();
+
+            console.log(`Chat completion successful with ${modelName}`);
+            return text;
+        } catch (error) {
+            lastError = error instanceof Error ? error : new Error(String(error));
+            console.log(`Model ${modelName} failed:`, lastError.message);
+            // Try next model
+            continue;
         }
-
-        throw new Error("All chat models failed");
-    } catch (error) {
-        console.error("Chat completion error:", error);
-        // Return a helpful fallback message instead of throwing
-        return "I'm sorry, I'm having trouble generating a response right now. This might be due to API configuration issues. Please check your Gemini API key and try again.";
     }
+
+    // If all models failed, throw the last error
+    console.error("All chat models failed. Last error:", lastError);
+    throw new Error(`Gemini chat completion failed: ${lastError?.message || 'All models unavailable'}`);
 }

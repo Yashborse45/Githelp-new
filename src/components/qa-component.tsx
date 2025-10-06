@@ -5,8 +5,9 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { MarkdownRenderer, preprocessGeminiText } from "@/components/ui/markdown-renderer";
 import { Textarea } from "@/components/ui/textarea";
-import { useAskQuestion, useFormDraft, useQAHistory } from "@/hooks/use-cached-queries";
+import { useFormDraft } from "@/hooks/use-cached-queries";
 import { type Citation } from "@/lib/ask-api";
+import { api } from "@/trpc/react";
 import { Bot, Cloud, Loader2, MessageCircle, Send, User } from "lucide-react";
 import { useEffect, useState } from "react";
 import CodeReferences from "./code-references";
@@ -30,11 +31,36 @@ export default function QAComponent({ projectId }: QAComponentProps) {
     const [currentAnswer, setCurrentAnswer] = useState("");
     const [pendingAnswer, setPendingAnswer] = useState<QAItem | null>(null);
 
-    // Use cached Q&A history
-    const { data: qaHistory = [], isLoading: isLoadingHistory, error: historyError } = useQAHistory(projectId);
+    // Use tRPC query for Q&A history (no caching issues)
+    const { data: qaHistoryData = [], isLoading: isLoadingHistory, error: historyError, refetch: refetchHistory } = api.qa.list.useQuery(
+        { projectId },
+        { enabled: !!projectId }
+    );
 
-    // Use mutation for asking questions
-    const askQuestionMutation = useAskQuestion();
+    // Transform database records to QAItem format
+    const qaHistory: QAItem[] = qaHistoryData.map((item) => {
+        let citations: Citation[] = [];
+        try {
+            citations = item.citations ? JSON.parse(item.citations) : [];
+        } catch (e) {
+            console.error('Failed to parse citations:', e);
+        }
+        return {
+            id: item.id,
+            question: item.question,
+            answer: item.answer,
+            citations: citations,
+            createdAt: item.createdAt.toISOString(),
+        };
+    });
+
+    // Use tRPC mutation for asking questions
+    const askQuestionMutation = api.qa.ask.useMutation({
+        onSuccess: () => {
+            // Refetch history after successful question
+            refetchHistory();
+        }
+    });
 
     // Use form draft for auto-saving questions
     const { data: draftQuestion, saveDraft } = useFormDraft(`qa_question_${projectId}`);
@@ -88,6 +114,8 @@ export default function QAComponent({ projectId }: QAComponentProps) {
                     setIsTyping(false);
                     setPendingAnswer(null);
                     setCurrentAnswer("");
+                    // Refetch history to show the new answer
+                    refetchHistory();
                 }, 100);
             }
         }, typeSpeed);
@@ -104,30 +132,37 @@ export default function QAComponent({ projectId }: QAComponentProps) {
         setPendingAnswer(null);
 
         try {
-            // Use the cached mutation
+            // Use the tRPC mutation
             const result = await askQuestionMutation.mutateAsync({
                 projectId,
                 question: question.trim()
             });
 
-            if (result.success) {
-                const qaItem: QAItem = {
-                    id: Date.now().toString(),
-                    question: question.trim(),
-                    answer: result.answer,
-                    citations: result.citations || [],
-                    createdAt: new Date().toISOString(),
-                };
+            // result is { answer: Answer } where Answer is the database record
+            const savedAnswer = result.answer;
 
-                // Clear the question input and draft
-                setQuestion("");
-                saveDraft("");
-
-                // Start typing animation
-                typeAnswer(result.answer, qaItem);
-            } else {
-                setError(result.error || 'Failed to get answer');
+            // Parse citations from JSON string
+            let citations: Citation[] = [];
+            try {
+                citations = savedAnswer.citations ? JSON.parse(savedAnswer.citations) : [];
+            } catch (e) {
+                console.error('Failed to parse citations:', e);
             }
+
+            const qaItem: QAItem = {
+                id: savedAnswer.id,
+                question: savedAnswer.question,
+                answer: savedAnswer.answer,
+                citations: citations,
+                createdAt: savedAnswer.createdAt.toISOString(),
+            };
+
+            // Clear the question input and draft
+            setQuestion("");
+            saveDraft("");
+
+            // Start typing animation
+            typeAnswer(savedAnswer.answer, qaItem);
         } catch (error) {
             console.error('Error asking question:', error);
             setError('Failed to ask question. Please try again.');

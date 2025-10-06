@@ -77,22 +77,16 @@ export function useQAHistory(projectId: string) {
 }
 
 // Hook for asking a question with caching
+// Note: useAskQuestion is now handled by tRPC directly in qa-component.tsx
+// This hook is kept for backward compatibility but should use tRPC's built-in mutation
 export function useAskQuestion() {
     const queryClient = useQueryClient();
 
     return useMutation({
         mutationFn: async ({ projectId, question }: { projectId: string; question: string }) => {
-            const response = await fetch('/api/qa/ask', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ projectId, question }),
-            });
-
-            if (!response.ok) {
-                throw new Error('Failed to ask question');
-            }
-
-            return response.json();
+            // This should be replaced with direct tRPC call in components
+            // For now, throw a descriptive error
+            throw new Error('This hook should not be used directly. Use api.qa.ask.useMutation() from tRPC instead.');
         },
         onSuccess: (data, variables) => {
             // Invalidate and refetch Q&A history

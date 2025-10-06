@@ -69,53 +69,37 @@ function chunkText(text: string, chunkSize = 1200, overlap = 300) {
 }
 
 export async function ingestFilesToPinecone(files: RepoFile[], projectId: string): Promise<{ processedFiles: number }> {
-    // Check for required environment variables
     if (!process.env.PINECONE_API_KEY) {
-        throw new Error('PINECONE_API_KEY is not configured. Please set it in your environment variables.');
+        throw new Error('PINECONE_API_KEY not configured');
     }
     if (!process.env.GEMINI_API_KEY) {
-        throw new Error('GEMINI_API_KEY is not configured. Please set it in your environment variables.');
+        throw new Error('GEMINI_API_KEY not configured');
     }
 
-    console.log(`Starting ingestion for project ${projectId}: ${files.length} files to process`);
+    console.log(`Starting ingestion: ${files.length} files`);
 
     try {
-        // Dynamic imports to avoid module loading issues
         const { embedTexts } = await import("./gemini");
         const { upsertVectors } = await import("./pinecone");
 
         const vectors: Array<any> = [];
         let processedFiles = 0;
-        let skippedFiles = 0;
 
         for (const file of files) {
-            if (shouldIgnore(file.path)) {
-                skippedFiles++;
-                continue;
-            }
-            // Skip empty / excessively large files
-            if (!file.content || file.content.length > 200_000) {
-                console.log(`Skipping ${file.path}: ${!file.content ? 'empty' : 'too large'}`);
-                skippedFiles++;
-                continue;
-            }
+            if (shouldIgnore(file.path)) continue;
+            if (!file.content || file.content.length > 200_000) continue;
 
             const chunks = chunkText(file.content, 1200, 300);
-            if (!chunks.length) {
-                skippedFiles++;
-                continue;
-            }
+            if (!chunks.length) continue;
 
-            console.log(`Processing file ${processedFiles + 1}/${files.length}: ${file.path} (${chunks.length} chunks)`);
             processedFiles += 1;
-
             const embeddings = await embedTexts(chunks);
 
             for (let i = 0; i < chunks.length; i++) {
                 const chunk = chunks[i];
-                if (chunk == null || chunk.length < 50) continue; // Skip very small chunks
+                if (chunk == null || chunk.length < 50) continue;
                 const embedding = embeddings[i];
-                if (!embedding) continue; // guard in case embedTexts returns shorter array
+                if (!embedding) continue;
                 const hash = hashText(chunk);
 
                 const id = `${projectId}--${file.path}--${i}--${hash}`;
@@ -124,32 +108,29 @@ export async function ingestFilesToPinecone(files: RepoFile[], projectId: string
                     path: file.path,
                     chunkIndex: i,
                     hash,
-                    text: chunk, // Store full chunk for better context
-                    summary: chunk.slice(0, 200) + (chunk.length > 200 ? '...' : ''), // Add summary for quick reference
+                    text: chunk,
+                    summary: chunk.slice(0, 200) + (chunk.length > 200 ? '...' : ''),
                 };
 
                 vectors.push({ id, values: embedding, metadata });
 
-                if (vectors.length >= 100) {
-                    console.log(`Upserting batch of ${vectors.length} vectors to Pinecone...`);
-                    await upsertVectors(vectors.splice(0, 100));
+                if (vectors.length >= 50) {
+                    await upsertVectors(vectors.splice(0, 50));
                 }
             }
         }
 
         if (vectors.length > 0) {
-            console.log(`Upserting final batch of ${vectors.length} vectors to Pinecone...`);
             await upsertVectors(vectors);
         }
 
-        console.log(`Ingestion complete: ${processedFiles} files processed, ${skippedFiles} files skipped`);
+        console.log(`Ingestion complete: ${processedFiles} files processed`);
         return { processedFiles };
     } catch (error) {
-        console.error('Ingestion to Pinecone failed:', error);
-        // Re-throw the error so the UI can show it
+        console.error('Ingestion failed:', error);
         if (error instanceof Error) {
             throw new Error(`Failed to process repository: ${error.message}`);
         }
-        throw new Error('Failed to process repository: Unknown error occurred');
+        throw new Error('Failed to process repository');
     }
 }

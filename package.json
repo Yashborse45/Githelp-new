@@ -97,7 +97,7 @@
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.3.1",
-    "@tailwindcss/postcss": "^4.0.15",
+    "@tailwindcss/postcss": "^4.1.14",
     "@types/aws-lambda": "^8.10.152",
     "@types/d3-interpolate": "^3.0.4",
     "@types/estree": "^1.0.8",

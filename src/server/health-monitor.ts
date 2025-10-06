@@ -3,14 +3,41 @@
  */
 
 import { Octokit } from "octokit";
-import { healthCheck, type HealthCheckResult } from "../lib/error-handling";
 import { embedTexts } from "./gemini";
 import { getPineconeClient } from "./pinecone";
+
+// Simple health check result interface
+export interface HealthCheckResult {
+    healthy: boolean;
+    service: string;
+    latency?: number;
+    error?: string;
+}
 
 export interface SystemHealthReport {
     overall: 'healthy' | 'degraded' | 'unhealthy';
     services: HealthCheckResult[];
     timestamp: string;
+}
+
+// Simple health check function
+async function healthCheck(name: string, checkFn: () => Promise<void>): Promise<HealthCheckResult> {
+    const start = Date.now();
+    try {
+        await checkFn();
+        return {
+            healthy: true,
+            service: name,
+            latency: Date.now() - start
+        };
+    } catch (error) {
+        return {
+            healthy: false,
+            service: name,
+            latency: Date.now() - start,
+            error: error instanceof Error ? error.message : String(error)
+        };
+    }
 }
 
 /**
@@ -65,7 +92,7 @@ export async function performHealthCheck(): Promise<SystemHealthReport> {
     );
 
     // Determine overall health
-    const healthyCount = results.filter(r => r.healthy).length;
+    const healthyCount = results.filter((r: HealthCheckResult) => r.healthy).length;
     let overall: 'healthy' | 'degraded' | 'unhealthy';
 
     if (healthyCount === results.length) {

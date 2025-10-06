@@ -1,12 +1,4 @@
 import { Pinecone } from "@pinecone-database/pinecone";
-import {
-    CircuitBreaker,
-    PineconeError,
-    RateLimiter,
-    safeExecute,
-    withRetry,
-    withTimeout
-} from "../lib/error-handling";
 
 const PINECONE_API_KEY = process.env.PINECONE_API_KEY;
 const PINECONE_INDEX = process.env.PINECONE_INDEX || "githelp";
@@ -14,9 +6,19 @@ const PINECONE_INDEX = process.env.PINECONE_INDEX || "githelp";
 // Create pinecone instance only if API key is available
 let pinecone: Pinecone | null = null;
 
-// Circuit breaker for Pinecone operations
-const pineconeCircuitBreaker = new CircuitBreaker(3, 30000);
-const pineconeRateLimiter = new RateLimiter(100, 60000); // 100 requests per minute
+// Simple error class for Pinecone operations
+class PineconeError extends Error {
+    public readonly statusCode?: number;
+    public readonly code: string;
+
+    constructor(message: string, code: string, statusCode?: number, cause?: unknown) {
+        super(message);
+        this.name = 'PineconeError';
+        this.code = code;
+        this.statusCode = statusCode;
+        this.cause = cause;
+    }
+}
 
 /**
  * Handles Pinecone API errors with proper error classification
@@ -106,9 +108,12 @@ export async function getPineconeClient(): Promise<Pinecone> {
             });
 
             // Test the connection with a simple operation
-            await withTimeout(async () => {
-                await pinecone!.listIndexes();
-            }, 10000, 'Pinecone connection timeout');
+            await Promise.race([
+                pinecone.listIndexes(),
+                new Promise((_, reject) =>
+                    setTimeout(() => reject(new Error('Pinecone connection timeout')), 10000)
+                )
+            ]);
 
         } catch (error) {
             pinecone = null;
@@ -135,45 +140,31 @@ export async function upsertVectors(vectors: { id: string; values: number[]; met
         }
     }
 
-    return pineconeCircuitBreaker.execute(async () => {
-        await pineconeRateLimiter.checkLimit();
+    try {
+        const pc = await getPineconeClient();
+        const index = pc.index(PINECONE_INDEX);
 
-        return withRetry(async () => {
-            return withTimeout(async () => {
-                try {
-                    const pc = await getPineconeClient();
-                    const index = pc.index(PINECONE_INDEX);
+        const batch = 100;
+        for (let i = 0; i < vectors.length; i += batch) {
+            const chunk = vectors.slice(i, i + batch);
 
-                    const batch = 100;
-                    for (let i = 0; i < vectors.length; i += batch) {
-                        const chunk = vectors.slice(i, i + batch);
-
-                        await safeExecute(async () => {
-                            await index.upsert(chunk);
-                        }, undefined, `vector upsert batch ${i / batch + 1}`);
-
-                        // Small delay between batches
-                        if (i + batch < vectors.length) {
-                            await new Promise(resolve => setTimeout(resolve, 100));
-                        }
-                    }
-
-                    console.log(`Successfully upserted ${vectors.length} vectors to Pinecone`);
-                } catch (error) {
-                    handlePineconeError(error, 'upsertVectors');
-                }
-            }, 30000, 'Pinecone upsert operation timed out');
-        }, {
-            maxRetries: 3,
-            retryCondition: (error) => {
-                if (error instanceof PineconeError) {
-                    // Don't retry on authentication or invalid format errors
-                    return error.code !== 'UNAUTHORIZED' && error.code !== 'INVALID_VECTOR_FORMAT';
-                }
-                return true;
+            try {
+                await index.upsert(chunk);
+            } catch (error) {
+                console.error(`Failed to upsert batch ${i / batch + 1}:`, error);
+                throw error;
             }
-        });
-    });
+
+            // Small delay between batches
+            if (i + batch < vectors.length) {
+                await new Promise(resolve => setTimeout(resolve, 100));
+            }
+        }
+
+        console.log(`Successfully upserted ${vectors.length} vectors to Pinecone`);
+    } catch (error) {
+        handlePineconeError(error, 'upsertVectors');
+    }
 }
 
 export async function queryVectors(vector: number[], topK = 5, projectId?: string): Promise<any[]> {
@@ -191,48 +182,31 @@ export async function queryVectors(vector: number[], topK = 5, projectId?: strin
         );
     }
 
-    return pineconeCircuitBreaker.execute(async () => {
-        await pineconeRateLimiter.checkLimit();
+    try {
+        const pc = await getPineconeClient();
+        const index = pc.index(PINECONE_INDEX);
 
-        return withRetry(async () => {
-            return withTimeout(async () => {
-                try {
-                    const pc = await getPineconeClient();
-                    const index = pc.index(PINECONE_INDEX);
+        const queryOptions: any = {
+            vector,
+            topK,
+            includeMetadata: true,
+        };
 
-                    const queryOptions: any = {
-                        vector,
-                        topK,
-                        includeMetadata: true,
-                    };
+        // Filter by project ID if provided
+        if (projectId) {
+            queryOptions.filter = { projectId };
+        }
 
-                    // Filter by project ID if provided
-                    if (projectId) {
-                        queryOptions.filter = { projectId };
-                    }
+        const result = await index.query(queryOptions);
 
-                    const result = await index.query(queryOptions);
+        if (!result.matches) {
+            console.warn('No matches returned from Pinecone query');
+            return [];
+        }
 
-                    if (!result.matches) {
-                        console.warn('No matches returned from Pinecone query');
-                        return [];
-                    }
-
-                    console.log(`Pinecone query returned ${result.matches.length} matches`);
-                    return result.matches;
-                } catch (error) {
-                    handlePineconeError(error, 'queryVectors');
-                }
-            }, 15000, 'Pinecone query operation timed out');
-        }, {
-            maxRetries: 2,
-            retryCondition: (error) => {
-                if (error instanceof PineconeError) {
-                    // Don't retry on authentication or invalid vector errors
-                    return error.code !== 'UNAUTHORIZED' && error.code !== 'INVALID_QUERY_VECTOR';
-                }
-                return true;
-            }
-        });
-    });
+        console.log(`Pinecone query returned ${result.matches.length} matches`);
+        return result.matches;
+    } catch (error) {
+        handlePineconeError(error, 'queryVectors');
+    }
 }

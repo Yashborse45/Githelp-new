@@ -20,38 +20,43 @@ export async function getPineconeClient(): Promise<Pinecone> {
 export async function upsertVectors(vectors: { id: string; values: number[]; metadata?: any }[]): Promise<void> {
     if (!vectors || vectors.length === 0) return;
 
-    const pc = await getPineconeClient();
-    const index = pc.index(PINECONE_INDEX);
+    try {
+        const pc = await getPineconeClient();
+        const index = pc.index(PINECONE_INDEX);
 
-    // Process in smaller batches
-    const batchSize = 50;
-    for (let i = 0; i < vectors.length; i += batchSize) {
-        const chunk = vectors.slice(i, i + batchSize);
-        await index.upsert(chunk);
-
-        // Small delay between batches
-        if (i + batchSize < vectors.length) {
-            await new Promise(resolve => setTimeout(resolve, 200));
+        const batch = 100;
+        for (let i = 0; i < vectors.length; i += batch) {
+            const chunk = vectors.slice(i, i + batch);
+            await index.upsert(chunk);
         }
+        console.log(`Upserted ${vectors.length} vectors to Pinecone`);
+    } catch (error) {
+        console.error('Pinecone upsert failed:', error);
+        throw error;
     }
-
-    console.log(`Upserted ${vectors.length} vectors to Pinecone`);
 }
 
 export async function queryVectors(vector: number[], topK = 5, projectId?: string): Promise<any[]> {
-    const pc = await getPineconeClient();
-    const index = pc.index(PINECONE_INDEX);
+    try {
+        const pc = await getPineconeClient();
+        const index = pc.index(PINECONE_INDEX);
 
-    const queryOptions: any = {
-        vector,
-        topK,
-        includeMetadata: true,
-    };
+        const queryOptions: any = {
+            vector,
+            topK,
+            includeMetadata: true,
+        };
 
-    if (projectId) {
-        queryOptions.filter = { projectId };
+        if (projectId) {
+            queryOptions.filter = {
+                projectId: { $eq: projectId }
+            };
+        }
+
+        const result = await index.query(queryOptions);
+        return result.matches || [];
+    } catch (error) {
+        console.warn('Pinecone query failed:', error);
+        return [];
     }
-
-    const result = await index.query(queryOptions);
-    return result.matches || [];
 }

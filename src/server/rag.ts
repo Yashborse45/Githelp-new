@@ -37,6 +37,15 @@ function hashText(text: string) {
     return crypto.createHash("sha1").update(text).digest("hex").slice(0, 12);
 }
 
+// Sanitize text to remove problematic Unicode characters (emojis, surrogates, etc.)
+function sanitizeText(text: string): string {
+    // Remove unpaired surrogates and other problematic characters
+    return text
+        .replace(/[\ud800-\udfff]/g, '') // Remove surrogates
+        .replace(/\uFFFD/g, '') // Remove replacement characters
+        .replace(/[\u0000-\u0008\u000B-\u000C\u000E-\u001F]/g, ''); // Remove control characters
+}
+
 // Enhanced chunker with better overlap and context preservation
 function chunkText(text: string, chunkSize = 1200, overlap = 300) {
     const chunks: string[] = [];
@@ -102,14 +111,18 @@ export async function ingestFilesToPinecone(files: RepoFile[], projectId: string
                 if (!embedding) continue;
                 const hash = hashText(chunk);
 
+                // Sanitize text before storing in Pinecone to avoid Unicode errors
+                const sanitizedChunk = sanitizeText(chunk);
+                const sanitizedSummary = sanitizeText(chunk.slice(0, 200)) + (chunk.length > 200 ? '...' : '');
+
                 const id = `${projectId}--${file.path}--${i}--${hash}`;
                 const metadata = {
                     projectId,
                     path: file.path,
                     chunkIndex: i,
                     hash,
-                    text: chunk,
-                    summary: chunk.slice(0, 200) + (chunk.length > 200 ? '...' : ''),
+                    text: sanitizedChunk,
+                    summary: sanitizedSummary,
                 };
 
                 vectors.push({ id, values: embedding, metadata });

@@ -4,6 +4,7 @@ export interface LoadingState {
     isLoading: boolean;
     progress?: number;
     message?: string;
+    title?: string;
     stage?: string;
 }
 
@@ -14,7 +15,8 @@ export function useLoadingState(initialState: LoadingState = { isLoading: false 
         setLoadingState({
             isLoading: true,
             progress: 0,
-            message: message || 'Loading...',
+            title: message || 'Loading...',
+            message: stage,
             stage,
         });
     };
@@ -23,7 +25,8 @@ export function useLoadingState(initialState: LoadingState = { isLoading: false 
         setLoadingState(prev => ({
             ...prev,
             progress: Math.min(100, Math.max(0, progress)),
-            message: message || prev.message,
+            title: message || prev.title,
+            message: stage || prev.message,
             stage: stage || prev.stage,
         }));
     };
@@ -31,7 +34,8 @@ export function useLoadingState(initialState: LoadingState = { isLoading: false 
     const setMessage = (message: string, stage?: string) => {
         setLoadingState(prev => ({
             ...prev,
-            message,
+            title: message,
+            message: stage || prev.message,
             stage: stage || prev.stage,
         }));
     };
@@ -40,6 +44,7 @@ export function useLoadingState(initialState: LoadingState = { isLoading: false 
         setLoadingState({
             isLoading: false,
             progress: 100,
+            title: undefined,
             message: undefined,
             stage: undefined,
         });
@@ -49,6 +54,7 @@ export function useLoadingState(initialState: LoadingState = { isLoading: false 
         setLoadingState({
             isLoading: false,
             progress: 0,
+            title: undefined,
             message: undefined,
             stage: undefined,
         });

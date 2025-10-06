@@ -1,22 +1,22 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { GitBranch, Github, HelpCircle, MessageSquare, Mic, Sparkles, Zap } from "lucide-react"
+import { BarChart3, GitBranch, Github, HelpCircle, MessageSquare, Sparkles, Zap } from "lucide-react"
 
 const features = [
   {
     icon: HelpCircle,
-    title: "Codebase Q&A",
+    title: "Intelligent Code Q&A",
     description:
-      "Connect a repository and ask complex questions in natural language. Get answers with direct links to the source code.",
+      "Connect your GitHub repository and ask complex questions in natural language. Get precise answers with direct links to relevant source code files.",
+  },
+  {
+    icon: BarChart3,
+    title: "Repository Analytics",
+    description: "Comprehensive insights into your codebase including language distribution, commit patterns, file analysis, and repository health scoring.",
   },
   {
     icon: GitBranch,
-    title: "AI Commit Summaries",
-    description: "Instantly understand team progress with AI-generated summaries of new commits.",
-  },
-  {
-    icon: Mic,
-    title: "Meeting Analysis",
-    description: "Upload technical meetings to get summaries and ask questions. Ensure no key decision is ever lost.",
+    title: "Smart Code Analysis",
+    description: "AI-powered analysis of your repository structure, dependencies, and coding patterns with real-time data from GitHub API.",
   },
 ]
 
@@ -37,10 +37,10 @@ export function FeaturesSection() {
           </div>
 
           <h2 className="text-3xl font-bold tracking-tight sm:text-4xl text-foreground">
-            Everything you need to understand your code
+            AI-powered repository understanding
           </h2>
           <p className="mt-4 text-lg text-muted-foreground">
-            Powerful AI tools designed specifically for developers and engineering teams.
+            Advanced tools for developers to explore, analyze, and understand their codebases with artificial intelligence.
           </p>
         </div>
 
@@ -166,12 +166,12 @@ export function FeaturesSection() {
                     </div>
                   </div>
                   <CardTitle className="text-xl font-semibold text-card-foreground">
-                    Get AI Insights
+                    View Analytics & Get Insights
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="relative z-10 text-center">
                   <CardDescription className="text-base leading-relaxed text-muted-foreground">
-                    Receive detailed explanations, code references, and insights. Understand your codebase like never before.
+                    Explore comprehensive repository analytics, ask questions about your code, and get AI-powered insights with source code references.
                   </CardDescription>
                 </CardContent>
               </Card>

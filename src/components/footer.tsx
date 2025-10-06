@@ -1,5 +1,5 @@
-import Link from "next/link"
 import { Code } from "lucide-react"
+import Link from "next/link"
 
 export function Footer() {
   return (
@@ -24,40 +24,40 @@ export function Footer() {
             <h3 className="font-semibold text-foreground mb-4">Product</h3>
             <ul className="space-y-2 text-sm">
               <li>
-                <Link href="/features" className="text-muted-foreground hover:text-foreground transition-colors">
-                  Features
+                <Link href="/demo" className="text-muted-foreground hover:text-foreground transition-colors">
+                  How it Works
                 </Link>
               </li>
               <li>
-                <Link href="/pricing" className="text-muted-foreground hover:text-foreground transition-colors">
-                  Pricing
+                <Link href="/dashboard" className="text-muted-foreground hover:text-foreground transition-colors">
+                  Dashboard
                 </Link>
               </li>
               <li>
-                <Link href="/docs" className="text-muted-foreground hover:text-foreground transition-colors">
-                  Documentation
+                <Link href="/login" className="text-muted-foreground hover:text-foreground transition-colors">
+                  Get Started
                 </Link>
               </li>
             </ul>
           </div>
 
-          {/* Company */}
+          {/* Resources */}
           <div>
-            <h3 className="font-semibold text-foreground mb-4">Company</h3>
+            <h3 className="font-semibold text-foreground mb-4">Resources</h3>
             <ul className="space-y-2 text-sm">
               <li>
-                <Link href="/about" className="text-muted-foreground hover:text-foreground transition-colors">
-                  About
+                <Link href="/demo" className="text-muted-foreground hover:text-foreground transition-colors">
+                  Demo
                 </Link>
               </li>
               <li>
-                <Link href="/blog" className="text-muted-foreground hover:text-foreground transition-colors">
-                  Blog
+                <Link href="https://github.com" className="text-muted-foreground hover:text-foreground transition-colors" target="_blank">
+                  GitHub Integration
                 </Link>
               </li>
               <li>
-                <Link href="/careers" className="text-muted-foreground hover:text-foreground transition-colors">
-                  Careers
+                <Link href="#" className="text-muted-foreground hover:text-foreground transition-colors">
+                  API Documentation
                 </Link>
               </li>
             </ul>
@@ -68,18 +68,18 @@ export function Footer() {
             <h3 className="font-semibold text-foreground mb-4">Support</h3>
             <ul className="space-y-2 text-sm">
               <li>
-                <Link href="/help" className="text-muted-foreground hover:text-foreground transition-colors">
-                  Help Center
+                <Link href="mailto:support@githelp.com" className="text-muted-foreground hover:text-foreground transition-colors">
+                  Contact Support
                 </Link>
               </li>
               <li>
-                <Link href="/contact" className="text-muted-foreground hover:text-foreground transition-colors">
-                  Contact
+                <Link href="/demo" className="text-muted-foreground hover:text-foreground transition-colors">
+                  Help & Guides
                 </Link>
               </li>
               <li>
-                <Link href="/status" className="text-muted-foreground hover:text-foreground transition-colors">
-                  Status
+                <Link href="#" className="text-muted-foreground hover:text-foreground transition-colors">
+                  Feature Requests
                 </Link>
               </li>
             </ul>

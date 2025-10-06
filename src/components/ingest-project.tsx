@@ -3,7 +3,7 @@
 import { useLoadingState } from '@/hooks/use-loading';
 import { api } from '@/trpc/react';
 import { CheckCircle, Database, Loader2 } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Button } from './ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { ErrorDisplay } from './ui/error-display';
@@ -15,8 +15,32 @@ interface IngestProjectProps {
 
 export default function IngestProject({ projectId }: IngestProjectProps) {
     const [ingestResult, setIngestResult] = useState<{ totalFiles: number; processedFiles: number } | null>(null);
+    const [repoInfo, setRepoInfo] = useState<{ totalFiles: number } | null>(null);
     const [error, setError] = useState<string | null>(null);
     const { loadingState, startLoading, updateProgress, setMessage, finishLoading } = useLoadingState();
+
+    // Get repository info for better time estimates
+    const getTimeEstimate = (totalFiles: number): string => {
+        if (totalFiles < 50) return "1-2 minutes ☕"
+        if (totalFiles < 200) return "3-5 minutes ☕☕"
+        if (totalFiles < 500) return "5-10 minutes ☕☕☕"
+        return "10-15 minutes - perfect time for a coffee break! ☕☕☕☕"
+    }
+
+    // Query to get repository plan
+    const { data: planData } = api.project.ingestPlan.useQuery(
+        { projectId },
+        {
+            enabled: !ingestResult // Only fetch if not already processed
+        }
+    );
+
+    // Update repo info when plan data is available
+    useEffect(() => {
+        if (planData) {
+            setRepoInfo(planData);
+        }
+    }, [planData]);
 
     const ingestMutation = api.project.ingest.useMutation({
         onSuccess: (result) => {
@@ -36,7 +60,9 @@ export default function IngestProject({ projectId }: IngestProjectProps) {
     const handleIngest = async () => {
         setError(null);
         setIngestResult(null);
-        startLoading('Initializing repository analysis...', 'Connecting to repository');
+
+        const timeEstimate = repoInfo ? getTimeEstimate(repoInfo.totalFiles) : "a few minutes";
+        startLoading('Initializing repository analysis...', `Estimated time: ${timeEstimate}`);
 
         // Simulate progress updates
         setTimeout(() => updateProgress(20, 'Fetching repository contents...', 'Reading files'), 500);
@@ -65,7 +91,7 @@ export default function IngestProject({ projectId }: IngestProjectProps) {
             </CardHeader>
             <CardContent className="space-y-4">
                 <p className="text-sm text-muted-foreground">
-                    Process your repository code to enable context-aware Q&A. This will analyze your code files and create embeddings for semantic search.
+                    Your repository will be analyzed to enable intelligent Q&A. This creates a knowledge base from your code for context-aware assistance.
                 </p>
 
                 {error && (
@@ -114,8 +140,14 @@ export default function IngestProject({ projectId }: IngestProjectProps) {
                 </Button>
 
                 <p className="text-xs text-muted-foreground">
-                    This process analyzes your code files and creates semantic embeddings.
-                    Large repositories may take a few minutes to process.
+                    {repoInfo ? (
+                        <>
+                            Found {repoInfo.totalFiles} files to analyze.
+                            Estimated time: {getTimeEstimate(repoInfo.totalFiles)}
+                        </>
+                    ) : (
+                        <>Analysis time varies by repository size: Small repos (1-2 min), Medium repos (3-5 min), Large repos (5-10 min).</>
+                    )}
                 </p>
             </CardContent>
         </Card>

@@ -1,5 +1,6 @@
 "use client"
 
+import AnalyticsComponent from "@/components/analytics-component"
 import { CommitCard } from "@/components/commit-card"
 import { CreateProjectForm } from "@/components/create-project-form"
 import QAComponent from "@/components/qa-component"
@@ -130,6 +131,28 @@ export function DashboardContent({ activeView, selectedProject, onViewChange, on
     return (
       <div className="flex-1 p-6 overflow-auto">
         <QAComponent projectId={selectedProject} />
+      </div>
+    )
+  }
+
+  if (activeView === "analytics") {
+    if (!selectedProject) {
+      return (
+        <div className="flex-1 p-6 overflow-auto">
+          <div className="text-center py-12">
+            <Alert className="max-w-md mx-auto">
+              <AlertDescription>
+                Please select a project from the sidebar to view analytics.
+              </AlertDescription>
+            </Alert>
+          </div>
+        </div>
+      )
+    }
+
+    return (
+      <div className="flex-1 p-6 overflow-auto">
+        <AnalyticsComponent selectedProject={selectedProject} />
       </div>
     )
   }

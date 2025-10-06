@@ -5,8 +5,10 @@ import type React from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { useLoadingState } from "@/hooks/use-loading"
 import { useToast } from "@/hooks/use-toast"
 import { api } from "@/trpc/react"
+import { CheckCircle, Database, Loader2 } from "lucide-react"
 import { useState } from "react"
 
 interface CreateProjectFormProps {
@@ -17,24 +19,98 @@ export function CreateProjectForm({ onProjectCreated }: CreateProjectFormProps =
   const [projectName, setProjectName] = useState("")
   const [githubUrl, setGithubUrl] = useState("")
   const [githubToken, setGithubToken] = useState("")
+  const [currentStep, setCurrentStep] = useState<'form' | 'processing' | 'complete'>('form')
+  const [processingStats, setProcessingStats] = useState<{ totalFiles: number; processedFiles: number } | null>(null)
   const { toast } = useToast()
+  const { loadingState, startLoading, updateProgress, setMessage, finishLoading } = useLoadingState()
 
   const utils = api.useContext()
 
-  const createProjectMutation = api.project.create.useMutation({
-    onSuccess: (project) => {
+  // Get repository size for time estimation
+  const getTimeEstimate = (totalFiles: number): string => {
+    if (totalFiles < 50) return "1-2 minutes ☕"
+    if (totalFiles < 200) return "3-5 minutes ☕☕"
+    if (totalFiles < 500) return "5-10 minutes ☕☕☕"
+    return "10-15 minutes - perfect time for a coffee break! ☕☕☕☕"
+  }
+
+  const ingestMutation = api.project.ingest.useMutation({
+    onSuccess: (result) => {
+      setProcessingStats(result)
+      setMessage('Repository processing completed successfully!')
+      setTimeout(() => {
+        finishLoading()
+        setCurrentStep('complete')
+        toast({
+          title: "🎉 All Done!",
+          description: `Processed ${result.processedFiles} files. Your project is ready for AI Q&A!`,
+        })
+
+        // Reset form after a delay
+        setTimeout(() => {
+          setCurrentStep('form')
+          setProjectName("")
+          setGithubUrl("")
+          setGithubToken("")
+          setProcessingStats(null)
+          onProjectCreated?.()
+        }, 3000)
+      }, 1500)
+    },
+    onError: (error) => {
       toast({
-        title: "Project created successfully!",
+        title: "Processing failed",
+        description: error.message,
+        variant: "destructive",
+      })
+      finishLoading()
+      setCurrentStep('form')
+    },
+  })
+
+  const createProjectMutation = api.project.create.useMutation({
+    onSuccess: async (project) => {
+      toast({
+        title: "✅ Project created successfully!",
         description: `${project.name} has been linked to your account.`,
       })
-      // Reset form
-      setProjectName("")
-      setGithubUrl("")
-      setGithubToken("")
-      // Invalidate and refetch projects list
+
+      // Invalidate projects list
       utils.project.list.invalidate()
-      // Callback to parent component
-      onProjectCreated?.()
+
+      // Move to processing step
+      setCurrentStep('processing')
+
+      // Get repository info for time estimate
+      try {
+        const planResult = await utils.project.ingestPlan.fetch({ projectId: project.id })
+        const estimate = getTimeEstimate(planResult.totalFiles)
+
+        toast({
+          title: "🔄 Starting repository analysis...",
+          description: `Found ${planResult.totalFiles} files. Estimated time: ${estimate}`,
+        })
+
+        // Start the loading state with progress simulation
+        startLoading('Initializing repository analysis...', 'Connecting to repository')
+
+        // Simulate progress updates
+        setTimeout(() => updateProgress(20, 'Fetching repository contents...', `Processing ${planResult.totalFiles} files`), 500)
+        setTimeout(() => updateProgress(40, 'Processing code files...', 'Analyzing structure'), 2000)
+        setTimeout(() => updateProgress(60, 'Generating embeddings...', 'AI processing'), 4000)
+        setTimeout(() => updateProgress(80, 'Storing in knowledge base...', 'Almost done!'), 6000)
+
+        // Start actual ingestion
+        await ingestMutation.mutateAsync({ projectId: project.id })
+
+      } catch (error) {
+        toast({
+          title: "Failed to process repository",
+          description: "Project created but processing failed. You can retry from the project page.",
+          variant: "destructive",
+        })
+        setCurrentStep('form')
+      }
     },
     onError: (error) => {
       toast({
@@ -47,7 +123,7 @@ export function CreateProjectForm({ onProjectCreated }: CreateProjectFormProps =
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    
+
     if (!projectName.trim() || !githubUrl.trim()) {
       toast({
         title: "Missing required fields",
@@ -121,57 +197,109 @@ export function CreateProjectForm({ onProjectCreated }: CreateProjectFormProps =
             <p className="text-muted-foreground">Enter the URL of your repository to link it to GitHelp</p>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="space-y-2">
-              <Label htmlFor="projectName" className="text-sm font-medium">
-                Project Name
-              </Label>
-              <Input
-                id="projectName"
-                type="text"
-                value={projectName}
-                onChange={(e) => setProjectName(e.target.value)}
-                className="w-full"
-                placeholder="Enter project name"
-              />
-            </div>
+          {currentStep === 'form' && (
+            <form onSubmit={handleSubmit} className="space-y-6">
+              <div className="space-y-2">
+                <Label htmlFor="projectName" className="text-sm font-medium">
+                  Project Name
+                </Label>
+                <Input
+                  id="projectName"
+                  type="text"
+                  value={projectName}
+                  onChange={(e) => setProjectName(e.target.value)}
+                  className="w-full"
+                  placeholder="Enter project name"
+                />
+              </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="githubUrl" className="text-sm font-medium">
-                Github URL
-              </Label>
-              <Input
-                id="githubUrl"
-                type="url"
-                value={githubUrl}
-                onChange={(e) => setGithubUrl(e.target.value)}
-                className="w-full"
-                placeholder="https://github.com/username/repository"
-              />
-            </div>
+              <div className="space-y-2">
+                <Label htmlFor="githubUrl" className="text-sm font-medium">
+                  Github URL
+                </Label>
+                <Input
+                  id="githubUrl"
+                  type="url"
+                  value={githubUrl}
+                  onChange={(e) => setGithubUrl(e.target.value)}
+                  className="w-full"
+                  placeholder="https://github.com/username/repository"
+                />
+              </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="githubToken" className="text-sm font-medium">
-                Github Token (Optional)
-              </Label>
-              <Input
-                id="githubToken"
-                type="password"
-                value={githubToken}
-                onChange={(e) => setGithubToken(e.target.value)}
-                className="w-full"
-                placeholder="Enter your GitHub token"
-              />
-            </div>
+              <div className="space-y-2">
+                <Label htmlFor="githubToken" className="text-sm font-medium">
+                  Github Token (Optional)
+                </Label>
+                <Input
+                  id="githubToken"
+                  type="password"
+                  value={githubToken}
+                  onChange={(e) => setGithubToken(e.target.value)}
+                  className="w-full"
+                  placeholder="Enter your GitHub token"
+                />
+              </div>
 
-            <Button 
-              type="submit" 
-              className="w-full bg-primary hover:bg-primary/90 text-primary-foreground py-3"
-              disabled={createProjectMutation.status === "pending"}
-            >
-              {createProjectMutation.status === "pending" ? "Creating Project..." : "Create Project"}
-            </Button>
-          </form>
+              <Button
+                type="submit"
+                className="w-full bg-primary hover:bg-primary/90 text-primary-foreground py-3"
+                disabled={createProjectMutation.isPending}
+              >
+                {createProjectMutation.isPending ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Creating Project...
+                  </>
+                ) : (
+                  "Create & Process Repository"
+                )}
+              </Button>
+            </form>
+          )}
+
+          {currentStep === 'processing' && (
+            <div className="space-y-6">
+              <div className="text-center">
+                <Database className="h-16 w-16 mx-auto mb-4 text-primary animate-pulse" />
+                <h2 className="text-xl font-semibold mb-2">Processing Repository</h2>
+                <p className="text-muted-foreground">
+                  We're analyzing your code and creating embeddings for AI-powered Q&A
+                </p>
+              </div>
+
+              {loadingState.isLoading && (
+                <div className="space-y-4">
+                  <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div
+                      className="bg-primary h-2 rounded-full transition-all duration-500 ease-out"
+                      style={{ width: `${loadingState.progress}%` }}
+                    />
+                  </div>
+                  <div className="text-center">
+                    <p className="font-medium">{loadingState.title}</p>
+                    <p className="text-sm text-muted-foreground">{loadingState.message}</p>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {currentStep === 'complete' && (
+            <div className="text-center space-y-6">
+              <CheckCircle className="h-16 w-16 mx-auto text-green-500" />
+              <div>
+                <h2 className="text-xl font-semibold mb-2">Repository Ready!</h2>
+                <p className="text-muted-foreground">
+                  {processingStats && `Successfully processed ${processingStats.processedFiles} files.`}
+                  <br />Your project is now ready for AI-powered Q&A!
+                </p>
+              </div>
+              <div className="text-sm text-muted-foreground">
+                Redirecting to projects in a moment...
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

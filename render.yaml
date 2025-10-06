@@ -28,7 +28,7 @@ services:
       - key: GEMINI_EMBEDDING_MODEL
         value: text-embedding-004
       - key: GEMINI_CHAT_MODEL
-        value: gemini-1.5-flash
+        value: gemini-1.5-pro
       - key: GEMINI_LOCATION
         value: us-central1
 

@@ -1,3 +1,4 @@
+import { analyticsRouter } from "@/server/api/routers/analytics";
 import { askRouter } from "@/server/api/routers/ask";
 import { commitRouter } from "@/server/api/routers/commit";
 import { postRouter } from "@/server/api/routers/post";
@@ -16,6 +17,7 @@ export const appRouter = createTRPCRouter({
   qa: qaRouter,
   ask: askRouter,
   commit: commitRouter,
+  analytics: analyticsRouter,
 });
 
 // export type definition of API

@@ -12,7 +12,7 @@ import {
 import { cn } from "@/lib/utils"
 import { api } from "@/trpc/react"
 import { useClerk, useUser } from "@clerk/nextjs"
-import { ExternalLink, LogOut, MessageCircle } from "lucide-react"
+import { BarChart3, ExternalLink, LogOut, MessageCircle } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useState } from "react"
 
@@ -48,6 +48,16 @@ export function Sidebar({ activeView, onViewChange, selectedProject, onProjectCh
 
   const handleQADoubleClick = () => {
     if (activeView === "qa") {
+      onViewChange("")
+    }
+  }
+
+  const handleAnalyticsClick = () => {
+    onViewChange("analytics")
+  }
+
+  const handleAnalyticsDoubleClick = () => {
+    if (activeView === "analytics") {
       onViewChange("")
     }
   }
@@ -127,6 +137,18 @@ export function Sidebar({ activeView, onViewChange, selectedProject, onProjectCh
               />
             </svg>
             {!isCollapsed && <span className="text-sm font-medium">Q&A</span>}
+          </button>
+
+          <button
+            onClick={handleAnalyticsClick}
+            onDoubleClick={handleAnalyticsDoubleClick}
+            className={cn(
+              "w-full flex items-center space-x-3 px-3 py-2 rounded-md transition-colors",
+              activeView === "analytics" ? "bg-primary text-primary-foreground" : "text-foreground hover:bg-muted",
+            )}
+          >
+            <BarChart3 className="h-4 w-4" />
+            {!isCollapsed && <span className="text-sm font-medium">Analytics</span>}
           </button>
         </nav>
       </div>

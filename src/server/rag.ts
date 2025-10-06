@@ -37,14 +37,35 @@ function hashText(text: string) {
     return crypto.createHash("sha1").update(text).digest("hex").slice(0, 12);
 }
 
-// Safe chunker
-function chunkText(text: string, chunkSize = 1000, overlap = 200) {
+// Enhanced chunker with better overlap and context preservation
+function chunkText(text: string, chunkSize = 1200, overlap = 300) {
     const chunks: string[] = [];
+
+    // For small files, keep them as single chunks
+    if (text.length <= chunkSize) {
+        return [text];
+    }
+
     for (let start = 0; start < text.length; start += chunkSize - overlap) {
         const end = Math.min(text.length, start + chunkSize);
-        chunks.push(text.slice(start, end));
+        let chunk = text.slice(start, end);
+
+        // Try to break at natural boundaries (newlines, function ends, etc.)
+        if (end < text.length) {
+            const lastNewline = chunk.lastIndexOf('\n');
+            const lastBrace = chunk.lastIndexOf('}');
+            const lastSemicolon = chunk.lastIndexOf(';');
+
+            // Use the latest natural boundary if it's not too far back
+            const naturalEnd = Math.max(lastNewline, lastBrace, lastSemicolon);
+            if (naturalEnd > chunk.length * 0.8) {
+                chunk = chunk.slice(0, naturalEnd + 1);
+            }
+        }
+
+        chunks.push(chunk.trim());
     }
-    return chunks;
+    return chunks.filter(chunk => chunk.length > 0);
 }
 
 export async function ingestFilesToPinecone(files: RepoFile[], projectId: string): Promise<{ processedFiles: number }> {
@@ -67,14 +88,14 @@ export async function ingestFilesToPinecone(files: RepoFile[], projectId: string
             // Skip empty / excessively large files
             if (!file.content || file.content.length > 200_000) continue;
 
-            const chunks = chunkText(file.content, 800, 200);
+            const chunks = chunkText(file.content, 1200, 300);
             if (!chunks.length) continue;
             processedFiles += 1;
             const embeddings = await embedTexts(chunks);
 
             for (let i = 0; i < chunks.length; i++) {
                 const chunk = chunks[i];
-                if (chunk == null) continue;
+                if (chunk == null || chunk.length < 50) continue; // Skip very small chunks
                 const embedding = embeddings[i];
                 if (!embedding) continue; // guard in case embedTexts returns shorter array
                 const hash = hashText(chunk);
@@ -85,7 +106,8 @@ export async function ingestFilesToPinecone(files: RepoFile[], projectId: string
                     path: file.path,
                     chunkIndex: i,
                     hash,
-                    text: chunk.slice(0, 500),
+                    text: chunk, // Store full chunk for better context
+                    summary: chunk.slice(0, 200) + (chunk.length > 200 ? '...' : ''), // Add summary for quick reference
                 };
 
                 vectors.push({ id, values: embedding, metadata });

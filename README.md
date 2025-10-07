@@ -3,7 +3,7 @@
 > AI-powered code analysis and Q&A platform that helps developers understand their codebases faster than ever before.
 
 [![Live Demo](https://img.shields.io/badge/Live%20Demo-githelp.onrender.com-blue?style=for-the-badge)](https://githelp.onrender.com/)
-[![GitHub](https://img.shields.io/badge/GitHub-Repository-black?style=for-the-badge&logo=github)](https://github.com/xXemran05khanXx/GitHelp)
+[![GitHub](https://img.shields.io/badge/GitHub-Repository-black?style=for-the-badge&logo=github)](https://github.com/Yashborse45/GitHelp)
 [![Next.js](https://img.shields.io/badge/Next.js-15.5.3-black?style=for-the-badge&logo=next.js)](https://nextjs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5-blue?style=for-the-badge&logo=typescript)](https://www.typescriptlang.org/)
 

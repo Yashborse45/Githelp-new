@@ -70,10 +70,10 @@ export function DashboardContent({ activeView, selectedProject, onViewChange, on
   // Fetch projects data
   const { data: projects = [], isLoading: projectsLoading } = api.project.list.useQuery()
 
-  // Fetch commits for selected project
+  // Fetch commits for selected project (only when a project is selected)
   const { data: commits = [], isLoading: commitsLoading } = api.commit.getRecent.useQuery(
-    { projectId: selectedProject!, limit: 5 },
-    { enabled: !!selectedProject }
+    { projectId: selectedProject || '', limit: 5 },
+    { enabled: !!selectedProject && selectedProject.length > 0 }
   )
 
   const qaMutation = api.qa.ask.useMutation({

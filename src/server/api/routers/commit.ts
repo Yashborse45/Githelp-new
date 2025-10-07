@@ -1,10 +1,10 @@
-import { z } from "zod";
 import { createTRPCRouter, protectedProcedure } from "@/server/api/trpc";
 import { getRecentCommits } from "@/server/github";
+import { z } from "zod";
 
 export const commitRouter = createTRPCRouter({
   getRecent: protectedProcedure
-    .input(z.object({ 
+    .input(z.object({
       projectId: z.string(),
       limit: z.number().min(1).max(50).default(10)
     }))
@@ -55,12 +55,11 @@ export const commitRouter = createTRPCRouter({
         return commits.map((commit, index) => ({
           ...commit,
           id: cachedCommits[index]?.id,
-          changes: [], // We'll populate this if needed
-          pullRequest: null, // Could extract from commit message if follows PR pattern
+          // Keep the changes and pullRequest from GitHub API response
         }));
       } catch (error) {
         console.error("Failed to fetch commits for project:", project.id, error);
-        
+
         // Fallback to cached commits if GitHub API fails
         const cachedCommits = await ctx.db.commit.findMany({
           where: { projectId: project.id },

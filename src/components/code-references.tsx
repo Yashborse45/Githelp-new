@@ -7,39 +7,68 @@ import { Code2, Database, File, FileCode, FileImage, FileText, Settings } from "
 import { useState } from "react";
 import SyntaxHighlighter from "react-syntax-highlighter";
 
-// Simple dark theme style object to avoid import issues
-const darkStyle = {
+// VS Code dark theme style for syntax highlighting
+const darkStyle: { [key: string]: React.CSSProperties } = {
     'code[class*="language-"]': {
-        color: '#ccc',
+        color: '#d4d4d4',
         background: 'none',
         fontFamily: 'Consolas, Monaco, "Andale Mono", "Ubuntu Mono", monospace',
         fontSize: '1em',
-        textAlign: 'left' as const,
-        whiteSpace: 'pre' as const,
+        textAlign: 'left',
+        whiteSpace: 'pre',
         wordSpacing: 'normal',
-        wordBreak: 'normal' as const,
-        wordWrap: 'normal' as const,
+        wordBreak: 'normal',
+        wordWrap: 'normal',
         lineHeight: '1.5',
         tabSize: 4,
-        hyphens: 'none' as const,
+        hyphens: 'none',
     },
     'pre[class*="language-"]': {
-        color: '#ccc',
-        background: '#2d2d2d',
+        color: '#d4d4d4',
+        background: '#1e1e1e',
         fontFamily: 'Consolas, Monaco, "Andale Mono", "Ubuntu Mono", monospace',
         fontSize: '1em',
-        textAlign: 'left' as const,
-        whiteSpace: 'pre' as const,
+        textAlign: 'left',
+        whiteSpace: 'pre',
         wordSpacing: 'normal',
-        wordBreak: 'normal' as const,
-        wordWrap: 'normal' as const,
+        wordBreak: 'normal',
+        wordWrap: 'normal',
         lineHeight: '1.5',
         tabSize: 4,
-        hyphens: 'none' as const,
+        hyphens: 'none',
         padding: '1em',
         margin: '.5em 0',
         overflow: 'auto',
     },
+    'comment': { color: '#6a9955', fontStyle: 'italic' },
+    'prolog': { color: '#6a9955' },
+    'doctype': { color: '#6a9955' },
+    'cdata': { color: '#6a9955' },
+    'punctuation': { color: '#d4d4d4' },
+    'property': { color: '#9cdcfe' },
+    'tag': { color: '#569cd6' },
+    'boolean': { color: '#569cd6' },
+    'number': { color: '#b5cea8' },
+    'constant': { color: '#4fc1ff' },
+    'symbol': { color: '#4fc1ff' },
+    'deleted': { color: '#f14c4c' },
+    'selector': { color: '#d7ba7d' },
+    'attr-name': { color: '#9cdcfe' },
+    'string': { color: '#ce9178' },
+    'char': { color: '#ce9178' },
+    'builtin': { color: '#4ec9b0' },
+    'inserted': { color: '#b5cea8' },
+    'operator': { color: '#d4d4d4' },
+    'entity': { color: '#569cd6' },
+    'url': { color: '#3794ff' },
+    'variable': { color: '#9cdcfe' },
+    'atrule': { color: '#c586c0' },
+    'attr-value': { color: '#ce9178' },
+    'keyword': { color: '#569cd6', fontWeight: 'bold' },
+    'function': { color: '#dcdcaa' },
+    'class-name': { color: '#4ec9b0' },
+    'regex': { color: '#d16969' },
+    'important': { color: '#569cd6', fontWeight: 'bold' },
 };
 
 interface CodeReferencesProps {
@@ -123,9 +152,7 @@ const getFileName = (path: string): string => {
 export default function CodeReferences({ citations }: CodeReferencesProps) {
     if (!citations || citations.length === 0) {
         return null;
-    }
-
-    // Group citations by file path to handle multiple chunks from same file
+    }    // Group citations by file path to handle multiple chunks from same file
     const fileGroups = citations.reduce((acc, citation) => {
         if (!acc[citation.path]) {
             acc[citation.path] = [];
@@ -182,15 +209,22 @@ export default function CodeReferences({ citations }: CodeReferencesProps) {
                                             fontSize: '0.875rem',
                                             lineHeight: '1.6',
                                             padding: '1rem',
-                                            background: 'transparent',
+                                            background: '#1e1e1e',
+                                            color: '#d4d4d4',
                                         }}
                                         showLineNumbers={true}
                                         wrapLines={true}
                                         lineNumberStyle={{
-                                            color: '#6b7280',
+                                            color: '#9ca3af',
                                             fontSize: '0.75rem',
                                             paddingRight: '1rem',
                                             userSelect: 'none',
+                                        }}
+                                        codeTagProps={{
+                                            style: {
+                                                color: '#d4d4d4',
+                                                fontFamily: 'Consolas, Monaco, "Courier New", monospace',
+                                            }
                                         }}
                                     >
                                         {citation.excerpt || '// No code content available'}
@@ -288,15 +322,22 @@ export default function CodeReferences({ citations }: CodeReferencesProps) {
                                                     fontSize: '0.875rem',
                                                     lineHeight: '1.6',
                                                     padding: '1rem',
-                                                    background: 'transparent',
+                                                    background: '#1e1e1e',
+                                                    color: '#d4d4d4',
                                                 }}
                                                 showLineNumbers={true}
                                                 wrapLines={true}
                                                 lineNumberStyle={{
-                                                    color: '#6b7280',
+                                                    color: '#9ca3af',
                                                     fontSize: '0.75rem',
                                                     paddingRight: '1rem',
                                                     userSelect: 'none',
+                                                }}
+                                                codeTagProps={{
+                                                    style: {
+                                                        color: '#d4d4d4',
+                                                        fontFamily: 'Consolas, Monaco, "Courier New", monospace',
+                                                    }
                                                 }}
                                             >
                                                 {citation.excerpt || '// No code content available'}

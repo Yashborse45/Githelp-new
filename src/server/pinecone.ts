@@ -3,23 +3,24 @@ import { Pinecone } from "@pinecone-database/pinecone";
 const PINECONE_API_KEY = process.env.PINECONE_API_KEY;
 const PINECONE_INDEX = process.env.PINECONE_INDEX || "githelp";
 
+// Create pinecone instance only if API key is available
 let pinecone: Pinecone | null = null;
 
 export async function getPineconeClient(): Promise<Pinecone> {
     if (!PINECONE_API_KEY) {
-        throw new Error("PINECONE_API_KEY not set");
+        throw new Error("PINECONE_API_KEY is required but not set in environment variables");
     }
 
     if (!pinecone) {
-        pinecone = new Pinecone({ apiKey: PINECONE_API_KEY });
+        pinecone = new Pinecone({
+            apiKey: PINECONE_API_KEY,
+        });
     }
 
     return pinecone;
 }
 
-export async function upsertVectors(vectors: { id: string; values: number[]; metadata?: any }[]): Promise<void> {
-    if (!vectors || vectors.length === 0) return;
-
+export async function upsertVectors(vectors: { id: string; values: number[]; metadata?: any }[]) {
     try {
         const pc = await getPineconeClient();
         const index = pc.index(PINECONE_INDEX);
@@ -29,14 +30,13 @@ export async function upsertVectors(vectors: { id: string; values: number[]; met
             const chunk = vectors.slice(i, i + batch);
             await index.upsert(chunk);
         }
-        console.log(`Upserted ${vectors.length} vectors to Pinecone`);
     } catch (error) {
-        console.error('Pinecone upsert failed:', error);
-        throw error;
+        console.warn('Pinecone upsert failed:', error);
+        // Don't throw error to avoid breaking the main functionality
     }
 }
 
-export async function queryVectors(vector: number[], topK = 5, projectId?: string): Promise<any[]> {
+export async function queryVectors(vector: number[], topK = 5, projectId?: string) {
     try {
         const pc = await getPineconeClient();
         const index = pc.index(PINECONE_INDEX);
@@ -47,16 +47,18 @@ export async function queryVectors(vector: number[], topK = 5, projectId?: strin
             includeMetadata: true,
         };
 
+        // Filter by project ID if provided
         if (projectId) {
             queryOptions.filter = {
                 projectId: { $eq: projectId }
             };
         }
 
-        const result = await index.query(queryOptions);
-        return result.matches || [];
+        const response = await index.query(queryOptions);
+        return response;
     } catch (error) {
         console.warn('Pinecone query failed:', error);
-        return [];
+        // Return empty response to avoid breaking the main functionality
+        return { matches: [] };
     }
 }

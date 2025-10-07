@@ -88,20 +88,21 @@ export async function answerQuestion(projectId: string, question: string): Promi
                         throw new ServiceError("Failed to generate embedding for question", "QA", "EMBEDDING_FAILED");
                     }
 
-                    // 2. RETRIEVAL STEP 2: Perform similarity search to find top 10 relevant code chunks
-                    let queryResp;
+                    // 2. RETRIEVAL STEP 2: Perform similarity search to find top 5 relevant code chunks (reduced from 10 for faster responses)
+                    let queryResp: any;
                     try {
-                        queryResp = await queryVectors(qEmbedding, 10, projectId);
+                        queryResp = await queryVectors(qEmbedding, 5, projectId);
                     } catch (error) {
                         console.error('Vector similarity search failed:', error);
-                        queryResp = [];
+                        queryResp = { matches: [] };
                     }
 
                     const matches = (Array.isArray(queryResp) ? queryResp : (queryResp as any).matches || [])
-                        .filter((m: any) => m.score && m.score > 0.5) // Only include relevant matches with good similarity (threshold > 0.5)
+                        .filter((m: any) => m.score && m.score > 0.6) // Increased threshold to 0.6 for more relevant results
+                        .slice(0, 5) // Limit to top 5 matches
                         .map((m: any) => ({ id: m.id, score: m.score, metadata: m.metadata }));
 
-                    // 3. AUGMENTATION STEP: Construct structured context string from retrieved code chunks
+                    // 3. AUGMENTATION STEP: Construct optimized context string from retrieved code chunks
                     let context = "";
                     const fileReferences: Citation[] = [];
 
@@ -109,13 +110,16 @@ export async function answerQuestion(projectId: string, question: string): Promi
                         for (const match of matches) {
                             const metadata = match.metadata;
                             if (metadata?.path && metadata?.text) {
-                                // Add structured context for each relevant code chunk (similar to SQL RAG pattern)
-                                context += `Source: ${metadata.path}\n`;
-                                context += `Code Content: ${metadata.text}\n`;
-                                context += `Summary of File: ${metadata.summary || metadata.text.slice(0, 200)}\n`;
-                                context += `Relevance Score: ${(match.score * 100).toFixed(1)}%\n\n`;
+                                // Add concise structured context for each relevant code chunk
+                                const codeSnippet = metadata.text.length > 1000
+                                    ? metadata.text.slice(0, 1000) + '...[truncated]'
+                                    : metadata.text;
 
-                                // Track file references for citations
+                                context += `File: ${metadata.path}\n`;
+                                context += `Code:\n${codeSnippet}\n`;
+                                context += `Relevance: ${(match.score * 100).toFixed(0)}%\n\n`;
+
+                                // Track file references for citations (use full text for display)
                                 fileReferences.push({
                                     path: metadata.path,
                                     chunkIndex: metadata.chunkIndex || 0,
@@ -125,37 +129,34 @@ export async function answerQuestion(projectId: string, question: string): Promi
                         }
                     }
 
-                    // 4. GENERATION STEP: Generate answer using augmented prompt with retrieved context
+                    // 4. GENERATION STEP: Generate answer using enhanced prompt with streaming
                     const prompt = matches.length === 0
-                        ? `You are a helpful coding assistant. The user is asking about their project: "${question}".
+                        ? `You are an expert software engineer and code assistant with deep technical knowledge. The user is asking: "${question}".
 
-Since no specific code context was found, provide a detailed, comprehensive response about general software development practices related to their question. Include specific examples, best practices, and actionable steps.
+Provide a clear, practical response about software development. Include specific examples and actionable steps.
 
-Suggest that they may need to ingest their project code first for more specific answers about their codebase.
+Note: For specific answers about their codebase, they should ingest their project code first.`
+                        : `You are an expert software engineer and AI code assistant with deep knowledge of software architecture, design patterns, and best practices.
 
-Question: ${question}`
-                        : `You are an AI code assistant with deep knowledge of software development. You have access to the user's repository code and should provide detailed, contextual answers.
+You have access to the user's actual codebase. Analyze it carefully and provide expert-level insights.
 
-Context from Repository:
+Code Context from Repository:
 ${context}
 
 User Question: ${question}
 
 Instructions:
-1. Analyze the provided code context carefully and base your answer on the actual codebase
-2. Reference specific files, functions, and code patterns when relevant
-3. Explain how the code works, its purpose, and any architectural patterns
-4. If the user is asking about implementation, provide specific code examples from the context
-5. Suggest improvements, best practices, or optimizations where appropriate
-6. If the question involves debugging or troubleshooting, analyze the code for potential issues
-7. Be thorough but concise, focusing on the most relevant aspects
-8. Always cite the source files when referencing specific code
+- Analyze the code like an experienced software engineer
+- Reference specific files, functions, and patterns
+- Explain technical concepts clearly
+- Provide actionable, professional guidance
+- Suggest improvements based on industry best practices
 
-Provide a comprehensive answer:`;
+Provide your expert analysis:`;
 
                     let answerText;
                     try {
-                        answerText = await chatCompletion(prompt, 2000);
+                        answerText = await chatCompletion(prompt, 1000);
                     } catch (error) {
                         console.error('Answer generation failed:', error);
                         answerText = "I'm having trouble generating a response right now. Please try again in a moment.";

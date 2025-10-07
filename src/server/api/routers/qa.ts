@@ -25,10 +25,7 @@ export const qaRouter = createTRPCRouter({
     }),
 
     list: protectedProcedure.input(z.object({ projectId: z.string() })).query(async ({ input, ctx }) => {
-        const answers = await ctx.db.answer.findMany({
-            where: { projectId: input.projectId },
-            orderBy: { createdAt: 'desc' } // Most recent first
-        });
+        const answers = await ctx.db.answer.findMany({ where: { projectId: input.projectId } });
         return answers;
     }),
 });

@@ -37,15 +37,6 @@ function hashText(text: string) {
     return crypto.createHash("sha1").update(text).digest("hex").slice(0, 12);
 }
 
-// Sanitize text to remove problematic Unicode characters (emojis, surrogates, etc.)
-function sanitizeText(text: string): string {
-    // Remove unpaired surrogates and other problematic characters
-    return text
-        .replace(/[\ud800-\udfff]/g, '') // Remove surrogates
-        .replace(/\uFFFD/g, '') // Remove replacement characters
-        .replace(/[\u0000-\u0008\u000B-\u000C\u000E-\u001F]/g, ''); // Remove control characters
-}
-
 // Enhanced chunker with better overlap and context preservation
 function chunkText(text: string, chunkSize = 1200, overlap = 300) {
     const chunks: string[] = [];
@@ -78,16 +69,14 @@ function chunkText(text: string, chunkSize = 1200, overlap = 300) {
 }
 
 export async function ingestFilesToPinecone(files: RepoFile[], projectId: string): Promise<{ processedFiles: number }> {
-    if (!process.env.PINECONE_API_KEY) {
-        throw new Error('PINECONE_API_KEY not configured');
+    // Early return if required environment variables are not set
+    if (!process.env.PINECONE_API_KEY || !process.env.GEMINI_API_KEY) {
+        console.warn('Pinecone or Gemini API keys not configured. Skipping ingestion.');
+        return { processedFiles: 0 };
     }
-    if (!process.env.GEMINI_API_KEY) {
-        throw new Error('GEMINI_API_KEY not configured');
-    }
-
-    console.log(`Starting ingestion: ${files.length} files`);
 
     try {
+        // Dynamic imports to avoid module loading issues
         const { embedTexts } = await import("./gemini");
         const { upsertVectors } = await import("./pinecone");
 
@@ -96,24 +85,20 @@ export async function ingestFilesToPinecone(files: RepoFile[], projectId: string
 
         for (const file of files) {
             if (shouldIgnore(file.path)) continue;
+            // Skip empty / excessively large files
             if (!file.content || file.content.length > 200_000) continue;
 
             const chunks = chunkText(file.content, 1200, 300);
             if (!chunks.length) continue;
-
             processedFiles += 1;
             const embeddings = await embedTexts(chunks);
 
             for (let i = 0; i < chunks.length; i++) {
                 const chunk = chunks[i];
-                if (chunk == null || chunk.length < 50) continue;
+                if (chunk == null || chunk.length < 50) continue; // Skip very small chunks
                 const embedding = embeddings[i];
-                if (!embedding) continue;
+                if (!embedding) continue; // guard in case embedTexts returns shorter array
                 const hash = hashText(chunk);
-
-                // Sanitize text before storing in Pinecone to avoid Unicode errors
-                const sanitizedChunk = sanitizeText(chunk);
-                const sanitizedSummary = sanitizeText(chunk.slice(0, 200)) + (chunk.length > 200 ? '...' : '');
 
                 const id = `${projectId}--${file.path}--${i}--${hash}`;
                 const metadata = {
@@ -121,14 +106,14 @@ export async function ingestFilesToPinecone(files: RepoFile[], projectId: string
                     path: file.path,
                     chunkIndex: i,
                     hash,
-                    text: sanitizedChunk,
-                    summary: sanitizedSummary,
+                    text: chunk, // Store full chunk for better context
+                    summary: chunk.slice(0, 200) + (chunk.length > 200 ? '...' : ''), // Add summary for quick reference
                 };
 
                 vectors.push({ id, values: embedding, metadata });
 
-                if (vectors.length >= 50) {
-                    await upsertVectors(vectors.splice(0, 50));
+                if (vectors.length >= 100) {
+                    await upsertVectors(vectors.splice(0, 100));
                 }
             }
         }
@@ -136,14 +121,9 @@ export async function ingestFilesToPinecone(files: RepoFile[], projectId: string
         if (vectors.length > 0) {
             await upsertVectors(vectors);
         }
-
-        console.log(`Ingestion complete: ${processedFiles} files processed`);
         return { processedFiles };
     } catch (error) {
-        console.error('Ingestion failed:', error);
-        if (error instanceof Error) {
-            throw new Error(`Failed to process repository: ${error.message}`);
-        }
-        throw new Error('Failed to process repository');
+        console.warn('Ingestion to Pinecone failed:', error);
+        return { processedFiles: 0 };
     }
 }

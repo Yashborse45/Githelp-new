@@ -1,4 +1,3 @@
-import { ReactQueryProvider } from "@/components/providers/react-query-provider"
 import { ThemeProvider } from "@/components/theme-provider"
 import { Toaster } from "@/components/ui/toaster"
 import { env } from "@/env"
@@ -84,12 +83,10 @@ export default function RootLayout({
             }}
           >
             <TRPCReactProvider>
-              <ReactQueryProvider>
-                <ThemeProvider attribute="class" defaultTheme="light" enableSystem disableTransitionOnChange>
-                  {children}
-                  <Toaster />
-                </ThemeProvider>
-              </ReactQueryProvider>
+              <ThemeProvider attribute="class" defaultTheme="light" enableSystem disableTransitionOnChange>
+                {children}
+                <Toaster />
+              </ThemeProvider>
             </TRPCReactProvider>
           </ClerkProvider>
         </Suspense>

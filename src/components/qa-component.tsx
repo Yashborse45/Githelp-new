@@ -5,9 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { MarkdownRenderer, preprocessGeminiText } from "@/components/ui/markdown-renderer";
 import { Textarea } from "@/components/ui/textarea";
-import { useFormDraft } from "@/hooks/use-cached-queries";
-import { type Citation } from "@/lib/ask-api";
-import { api } from "@/trpc/react";
+import { askQuestion, getQAHistory, type Citation } from "@/lib/ask-api";
 import { Bot, Cloud, Loader2, MessageCircle, Send, User } from "lucide-react";
 import { useEffect, useState } from "react";
 import CodeReferences from "./code-references";
@@ -26,146 +24,51 @@ interface QAItem {
 
 export default function QAComponent({ projectId }: QAComponentProps) {
     const [question, setQuestion] = useState("");
+    const [isLoading, setIsLoading] = useState(false);
+    const [qaHistory, setQAHistory] = useState<QAItem[]>([]);
     const [error, setError] = useState<string | null>(null);
-    const [isTyping, setIsTyping] = useState(false);
-    const [currentAnswer, setCurrentAnswer] = useState("");
-    const [pendingAnswer, setPendingAnswer] = useState<QAItem | null>(null);
 
-    // Use tRPC query for Q&A history (no caching issues)
-    const { data: qaHistoryData = [], isLoading: isLoadingHistory, error: historyError, refetch: refetchHistory } = api.qa.list.useQuery(
-        { projectId },
-        { enabled: !!projectId }
-    );
-
-    // Transform database records to QAItem format
-    const qaHistory: QAItem[] = qaHistoryData.map((item) => {
-        let citations: Citation[] = [];
-        try {
-            citations = item.citations ? JSON.parse(item.citations) : [];
-        } catch (e) {
-            console.error('Failed to parse citations:', e);
-        }
-        return {
-            id: item.id,
-            question: item.question,
-            answer: item.answer,
-            citations: citations,
-            createdAt: item.createdAt.toISOString(),
-        };
-    });
-
-    // Use tRPC mutation for asking questions
-    const askQuestionMutation = api.qa.ask.useMutation({
-        onSuccess: () => {
-            // Refetch history after successful question
-            refetchHistory();
-        }
-    });
-
-    // Use form draft for auto-saving questions
-    const { data: draftQuestion, saveDraft } = useFormDraft(`qa_question_${projectId}`);
-
-    // Load draft question on mount
+    // Load Q&A history on component mount and when project changes
     useEffect(() => {
-        if (draftQuestion && !question) {
-            setQuestion(draftQuestion);
-        }
-    }, [draftQuestion, question]);
-
-    // Auto-save draft when question changes
-    useEffect(() => {
-        const timeoutId = setTimeout(() => {
-            if (question.trim()) {
-                saveDraft(question);
-            }
-        }, 1000); // Save after 1 second of no typing
-
-        return () => clearTimeout(timeoutId);
-    }, [question, saveDraft]);
-
-    // Clear states when project changes
-    useEffect(() => {
+        // Clear previous state when project changes
+        setQAHistory([]);
         setQuestion("");
         setError(null);
-        setIsTyping(false);
-        setCurrentAnswer("");
-        setPendingAnswer(null);
+        loadQAHistory();
     }, [projectId]);
 
-    // Typing effect for answers - fast and smooth
-    const typeAnswer = (answer: string, qaItem: QAItem) => {
-        setIsTyping(true);
-        setCurrentAnswer("");
-        setPendingAnswer(qaItem);
-
-        let index = 0;
-        const typeSpeed = 3; // Very fast typing speed
-        const charsPerFrame = answer.length > 500 ? 3 : 1; // Type multiple chars for long responses
-
-        const timer = setInterval(() => {
-            if (index < answer.length) {
-                const nextChars = answer.slice(index, index + charsPerFrame);
-                setCurrentAnswer(prev => prev + nextChars);
-                index += charsPerFrame;
-            } else {
-                clearInterval(timer);
-                // Quick transition to complete answer
-                setTimeout(() => {
-                    setIsTyping(false);
-                    setPendingAnswer(null);
-                    setCurrentAnswer("");
-                    // Refetch history to show the new answer
-                    refetchHistory();
-                }, 100);
-            }
-        }, typeSpeed);
+    const loadQAHistory = async () => {
+        const result = await getQAHistory(projectId);
+        if (result.success) {
+            setQAHistory(result.data);
+        } else {
+            setError(result.error);
+        }
     };
 
     const handleAskQuestion = async () => {
         if (!question.trim()) return;
 
+        setIsLoading(true);
         setError(null);
 
-        // Clear any ongoing typing animation
-        setIsTyping(false);
-        setCurrentAnswer("");
-        setPendingAnswer(null);
-
         try {
-            // Use the tRPC mutation
-            const result = await askQuestionMutation.mutateAsync({
-                projectId,
-                question: question.trim()
-            });
+            // Use Gemini for all questions
+            const result = await askQuestion(projectId, question);
 
-            // result is { answer: Answer } where Answer is the database record
-            const savedAnswer = result.answer;
+            if (result.success) {
+                setQuestion(""); // Clear the input
+                setIsLoading(false);
 
-            // Parse citations from JSON string
-            let citations: Citation[] = [];
-            try {
-                citations = savedAnswer.citations ? JSON.parse(savedAnswer.citations) : [];
-            } catch (e) {
-                console.error('Failed to parse citations:', e);
+                // Show answer immediately without typing animation
+                setQAHistory(prev => [result.data, ...prev]);
+            } else {
+                setError(result.error);
+                setIsLoading(false);
             }
-
-            const qaItem: QAItem = {
-                id: savedAnswer.id,
-                question: savedAnswer.question,
-                answer: savedAnswer.answer,
-                citations: citations,
-                createdAt: savedAnswer.createdAt.toISOString(),
-            };
-
-            // Clear the question input and draft
-            setQuestion("");
-            saveDraft("");
-
-            // Start typing animation
-            typeAnswer(savedAnswer.answer, qaItem);
-        } catch (error) {
-            console.error('Error asking question:', error);
-            setError('Failed to ask question. Please try again.');
+        } catch (err) {
+            setError(err instanceof Error ? err.message : "An error occurred");
+            setIsLoading(false);
         }
     };
 
@@ -176,7 +79,7 @@ export default function QAComponent({ projectId }: QAComponentProps) {
     };
 
     return (
-        <div className="max-w-4xl mx-auto space-y-6 overflow-hidden">
+        <div className="max-w-4xl mx-auto space-y-6">
             {/* Question Input */}
             <Card className="w-full">
                 <CardHeader>
@@ -204,18 +107,13 @@ export default function QAComponent({ projectId }: QAComponentProps) {
                         </span>
                         <Button
                             onClick={handleAskQuestion}
-                            disabled={!question.trim() || askQuestionMutation.isPending || isTyping}
+                            disabled={!question.trim() || isLoading}
                             className="flex items-center gap-2 min-w-[100px]"
                         >
-                            {askQuestionMutation.isPending ? (
+                            {isLoading ? (
                                 <>
                                     <Loader2 className="h-4 w-4 animate-spin" />
-                                    <span className="animate-pulse">Thinking...</span>
-                                </>
-                            ) : isTyping ? (
-                                <>
-                                    <Bot className="h-4 w-4 animate-pulse" />
-                                    <span className="animate-pulse">Typing...</span>
+                                    <span className="animate-pulse">Analyzing...</span>
                                 </>
                             ) : (
                                 <>
@@ -233,7 +131,7 @@ export default function QAComponent({ projectId }: QAComponentProps) {
                     )}
 
                     {/* Loading State */}
-                    {askQuestionMutation.isPending && (
+                    {isLoading && (
                         <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 p-4 rounded-lg animate-slide-in">
                             <div className="flex items-center gap-3">
                                 <Loader2 className="h-5 w-5 animate-spin text-blue-600 dark:text-blue-400" />
@@ -255,52 +153,8 @@ export default function QAComponent({ projectId }: QAComponentProps) {
             <div className="space-y-4">
                 <h3 className="text-lg font-semibold">Conversation</h3>
 
-                {/* Show pending answer with typing animation */}
-                {pendingAnswer && (
-                    <Card className="border-l-4 border-l-blue-500 animate-in slide-in-from-bottom-5 duration-500 w-full overflow-hidden">
-                        <CardContent className="pt-6">
-                            <div className="space-y-4">
-                                {/* Question */}
-                                <div className="flex items-start gap-3">
-                                    <User className="h-5 w-5 mt-1 text-blue-600" />
-                                    <div className="flex-1">
-                                        <h4 className="font-medium text-blue-700 dark:text-blue-400 mb-2">You asked:</h4>
-                                        <p className="text-gray-700 dark:text-gray-300 bg-blue-50 dark:bg-blue-950/30 p-3 rounded-lg border border-blue-200 dark:border-blue-800">{pendingAnswer.question}</p>
-                                    </div>
-                                </div>
-
-                                {/* Typing Answer */}
-                                <div className="flex items-start gap-3">
-                                    <Bot className="h-5 w-5 mt-1 text-green-600 animate-pulse" />
-                                    <div className="flex-1">
-                                        <h4 className="font-medium text-green-700 dark:text-green-400 mb-2 flex items-center gap-2">
-                                            AI Assistant
-                                            <span className="text-xs bg-green-100 dark:bg-green-900/50 text-green-800 dark:text-green-300 px-2 py-1 rounded-full animate-pulse">
-                                                typing...
-                                            </span>
-                                        </h4>
-                                        <div className="bg-green-50 dark:bg-green-950/30 p-3 rounded-lg border border-green-200 dark:border-green-800 overflow-hidden">
-                                            <MarkdownRenderer
-                                                content={preprocessGeminiText(currentAnswer)}
-                                                variant="compact"
-                                                className="text-sm break-words"
-                                            />
-                                            <span className="inline-block w-0.5 h-5 bg-green-600 ml-1 animate-pulse"></span>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {/* Code References for pending answer */}
-                                {pendingAnswer.citations && pendingAnswer.citations.length > 0 && (
-                                    <CodeReferences citations={pendingAnswer.citations} />
-                                )}
-                            </div>
-                        </CardContent>
-                    </Card>
-                )}
-
                 {/* Existing Q&A History */}
-                {qaHistory.length === 0 && !pendingAnswer ? (
+                {qaHistory.length === 0 ? (
                     <Card className="w-full">
                         <CardContent className="text-center py-8 text-muted-foreground">
                             <MessageCircle className="h-12 w-12 mx-auto mb-4 opacity-50" />
@@ -308,33 +162,33 @@ export default function QAComponent({ projectId }: QAComponentProps) {
                         </CardContent>
                     </Card>
                 ) : (
-                    qaHistory.map((qa: QAItem, index: number) => (
+                    qaHistory.map((qa, index) => (
                         <Card
                             key={qa.id}
-                            className="border-l-4 border-l-gray-300 animate-in slide-in-from-bottom-5 duration-300 w-full overflow-hidden"
+                            className="border-l-4 border-l-gray-300 animate-in slide-in-from-bottom-5 duration-300 w-full"
                             style={{ animationDelay: `${index * 100}ms` }}
                         >
                             <CardContent className="pt-6">
                                 <div className="space-y-4">
                                     {/* Question */}
                                     <div className="flex items-start gap-3">
-                                        <User className="h-5 w-5 mt-1 text-blue-600" />
-                                        <div className="flex-1">
+                                        <User className="h-5 w-5 mt-1 text-blue-600 flex-shrink-0" />
+                                        <div className="flex-1 min-w-0">
                                             <h4 className="font-medium text-blue-700 dark:text-blue-400 mb-2">You asked:</h4>
-                                            <p className="text-gray-700 dark:text-gray-300 bg-blue-50 dark:bg-blue-950/30 p-3 rounded-lg border border-blue-200 dark:border-blue-800 break-words overflow-wrap-anywhere">{qa.question}</p>
+                                            <p className="text-gray-700 dark:text-gray-300 bg-blue-50 dark:bg-blue-950/30 p-3 rounded-lg border border-blue-200 dark:border-blue-800 break-words overflow-wrap-anywhere max-w-full">{qa.question}</p>
                                         </div>
                                     </div>
 
                                     {/* Answer */}
                                     <div className="flex items-start gap-3">
-                                        <Bot className="h-5 w-5 mt-1 text-green-600" />
-                                        <div className="flex-1">
+                                        <Bot className="h-5 w-5 mt-1 text-green-600 flex-shrink-0" />
+                                        <div className="flex-1 min-w-0">
                                             <h4 className="font-medium text-green-700 dark:text-green-400 mb-2">AI Assistant:</h4>
-                                            <div className="bg-green-50 dark:bg-green-950/30 p-3 rounded-lg border border-green-200 dark:border-green-800 overflow-hidden">
+                                            <div className="bg-green-50 dark:bg-green-950/30 p-3 rounded-lg border border-green-200 dark:border-green-800 overflow-x-auto">
                                                 <MarkdownRenderer
                                                     content={preprocessGeminiText(qa.answer)}
                                                     variant="compact"
-                                                    className="break-words"
+                                                    className="break-words max-w-full"
                                                 />
                                             </div>
                                         </div>

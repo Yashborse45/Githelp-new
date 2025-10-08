@@ -17,7 +17,7 @@ export function Header() {
             <div className="flex items-center justify-center w-8 h-8 rounded-md bg-gradient-primary">
               <Logo className="h-4 w-4 text-white" />
             </div>
-            <span className="text-xl font-bold text-foreground">GitHelp</span>
+            <span className="text-xl font-bold text-foreground">RepoMind</span>
           </div>
 
           {/* Navigation Links */}

@@ -194,7 +194,7 @@ export function CreateProjectForm({ onProjectCreated }: CreateProjectFormProps =
         <div className="flex-1 max-w-md">
           <div className="mb-8">
             <h1 className="text-3xl font-bold text-foreground mb-2">Link your GitHub Repository</h1>
-            <p className="text-muted-foreground">Enter the URL of your repository to link it to GitHelp</p>
+            <p className="text-muted-foreground">Enter the URL of your repository to link it to RepoMind</p>
           </div>
 
           {currentStep === 'form' && (

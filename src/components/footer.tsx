@@ -12,7 +12,7 @@ export function Footer() {
               <div className="flex items-center justify-center w-8 h-8 rounded-md bg-gradient-primary">
                 <Code className="h-4 w-4 text-white" />
               </div>
-              <span className="text-xl font-bold text-foreground">GitHelp</span>
+              <span className="text-xl font-bold text-foreground">RepoMind</span>
             </div>
             <p className="text-sm text-muted-foreground max-w-xs">
               AI assistant that instantly understands your GitHub repositories.
@@ -68,7 +68,7 @@ export function Footer() {
             <h3 className="font-semibold text-foreground mb-4">Support</h3>
             <ul className="space-y-2 text-sm">
               <li>
-                <Link href="mailto:support@githelp.com" className="text-muted-foreground hover:text-foreground transition-colors">
+                <Link href="mailto:support@RepoMind.com" className="text-muted-foreground hover:text-foreground transition-colors">
                   Contact Support
                 </Link>
               </li>
@@ -87,7 +87,7 @@ export function Footer() {
         </div>
 
         <div className="mt-8 border-t border-border pt-8 flex flex-col sm:flex-row justify-between items-center">
-          <p className="text-sm text-muted-foreground">© 2024 GitHelp. All rights reserved.</p>
+          <p className="text-sm text-muted-foreground">© 2024 RepoMind. All rights reserved.</p>
           <div className="flex space-x-6 mt-4 sm:mt-0">
             <Link href="/privacy" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
               Privacy Policy

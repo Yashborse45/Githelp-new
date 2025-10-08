@@ -39,7 +39,7 @@ export function OnboardingFlow({ onComplete, onSkip }: OnboardingFlowProps) {
     const [steps, setSteps] = useState<OnboardingStep[]>([
         {
             id: 'welcome',
-            title: 'Welcome to GitHelp! 🎉',
+            title: 'Welcome to RepoMind! 🎉',
             description: 'Let\'s get you started with AI-powered code assistance',
             icon: BookOpen,
             completed: true,
@@ -111,7 +111,7 @@ export function OnboardingFlow({ onComplete, onSkip }: OnboardingFlowProps) {
             <Card className="w-full max-w-2xl max-h-[90vh] overflow-y-auto">
                 <CardHeader className="text-center pb-2">
                     <CardTitle className="text-2xl mb-2">
-                        Welcome to GitHelp, {user?.firstName || 'there'}! 👋
+                        Welcome to RepoMind, {user?.firstName || 'there'}! 👋
                     </CardTitle>
                     <Progress value={progress} className="w-full" />
                     <p className="text-sm text-muted-foreground mt-2">

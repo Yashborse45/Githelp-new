@@ -20,7 +20,7 @@ const jetbrainsMono = JetBrains_Mono({
 })
 
 export const metadata: Metadata = {
-  title: "GitHelp - Your Codebase Has Answers",
+  title: "RepoMind - Your Codebase Has Answers",
   description: "AI assistant that instantly understands your GitHub repositories. Onboard faster and debug smarter.",
   generator: "v0.app",
 }

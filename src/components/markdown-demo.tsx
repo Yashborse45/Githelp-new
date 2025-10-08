@@ -6,9 +6,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { MarkdownRenderer, preprocessGeminiText } from '@/components/ui/markdown-renderer';
 import React from 'react';
 
-const sampleGeminiResponse = `# Welcome to Enhanced GitHelp
+const sampleGeminiResponse = `# Welcome to Enhanced RepoMind
 
-I'm **GitHelp AI**, your intelligent code assistant! Here's what I can help you with:
+I'm **RepoMind AI**, your intelligent code assistant! Here's what I can help you with:
 
 ## Key Features
 

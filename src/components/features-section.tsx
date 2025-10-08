@@ -109,7 +109,7 @@ export function FeaturesSection() {
                 </CardHeader>
                 <CardContent className="relative z-10 text-center">
                   <CardDescription className="text-base leading-relaxed text-muted-foreground">
-                    Link your GitHub repository to GitHelp. We'll analyze your codebase and make it searchable with AI.
+                    Link your GitHub repository to RepoMind. We'll analyze your codebase and make it searchable with AI.
                   </CardDescription>
                 </CardContent>
               </Card>

@@ -64,7 +64,7 @@ function CitationsList({ citationsJson }: { citationsJson: string }) {
 export function DashboardContent({ activeView, selectedProject, onViewChange, onProjectChange }: DashboardContentProps) {
   // Local state for Q&A interaction
   const [question, setQuestion] = useState("")
-  const [dashboardQuestion, setDashboardQuestion] = useState("Which file should I edit to change the home page?")
+  const [dashboardQuestion, setDashboardQuestion] = useState("How to change the home page in this repo?")
   const [showAnswerBox, setShowAnswerBox] = useState(false)
 
   // Fetch projects data
@@ -207,8 +207,15 @@ export function DashboardContent({ activeView, selectedProject, onViewChange, on
 
                 {/* Ask question section */}
                 <div className="mt-6 space-y-3">
+                  <div className="bg-muted/50 border border-border rounded-lg p-3 mb-2">
+                    <p className="text-xs text-muted-foreground">
+                      💡 <strong>Tip:</strong> For best results, include "in this repo" or "in this project" in your questions
+                      <br />
+                      <span className="text-[10px] mt-1 block">Example: "How to change the home page <strong>in this repo</strong>?"</span>
+                    </p>
+                  </div>
                   <Input
-                    placeholder="Which file should I edit to change the home page?"
+                    placeholder="How to change the home page in this repo?"
                     value={dashboardQuestion}
                     onChange={(e) => setDashboardQuestion(e.target.value)}
                     className="bg-background"
@@ -218,7 +225,7 @@ export function DashboardContent({ activeView, selectedProject, onViewChange, on
                     disabled={!dashboardQuestion.trim() || loading}
                     className="bg-primary hover:bg-primary/90 text-primary-foreground"
                   >
-                    {loading ? "Thinking..." : "Ask GitHelp!"}
+                    {loading ? "Thinking..." : "Ask RepoMind!"}
                   </Button>
                 </div>
               </div>
@@ -324,7 +331,7 @@ export function DashboardContent({ activeView, selectedProject, onViewChange, on
             <div className="text-center py-12">
               <Alert className="max-w-md mx-auto">
                 <AlertDescription>
-                  You haven't created any projects yet. Create your first project to get started with GitHelp!
+                  You haven't created any projects yet. Create your first project to get started with RepoMind!
                 </AlertDescription>
               </Alert>
             </div>

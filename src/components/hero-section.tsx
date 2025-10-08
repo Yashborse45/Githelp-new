@@ -26,7 +26,7 @@ export function HeroSection() {
           </h1>
 
           <p className="mx-auto mt-6 max-w-2xl text-lg leading-8 text-muted-foreground text-pretty">
-            GitHelp is the AI assistant that instantly understands your GitHub repositories. Ask questions about your code, get comprehensive analytics, and onboard faster than ever.
+            RepoMind is the AI assistant that instantly understands your GitHub repositories. Ask questions about your code, get comprehensive analytics, and onboard faster than ever.
           </p>
 
           <div className="mt-10 flex items-center justify-center gap-x-6">

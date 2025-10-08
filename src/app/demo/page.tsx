@@ -13,7 +13,7 @@ export default function DemoPage() {
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
                             <GitBranch className="h-6 w-6" />
-                            <span className="text-xl font-bold">GitHelp</span>
+                            <span className="text-xl font-bold">RepoMind</span>
                         </div>
                         <div className="flex items-center gap-4">
                             <Link href="/">
@@ -31,7 +31,7 @@ export default function DemoPage() {
             <div className="container mx-auto px-4 py-12">
                 {/* Hero Section */}
                 <div className="text-center mb-12">
-                    <h1 className="text-4xl font-bold mb-4">How to Use GitHelp</h1>
+                    <h1 className="text-4xl font-bold mb-4">How to Use RepoMind</h1>
                     <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
                         Learn how to leverage AI-powered code understanding to get instant answers about your repositories
                     </p>
@@ -54,7 +54,7 @@ export default function DemoPage() {
                         </CardHeader>
                         <CardContent className="space-y-4">
                             <p className="text-muted-foreground">
-                                Start by connecting your GitHub repository to GitHelp. The AI will analyze your codebase and create a searchable knowledge base.
+                                Start by connecting your GitHub repository to RepoMind. The AI will analyze your codebase and create a searchable knowledge base.
                             </p>
                             <div className="bg-muted p-4 rounded-lg">
                                 <h4 className="font-semibold mb-2">What happens during project creation:</h4>

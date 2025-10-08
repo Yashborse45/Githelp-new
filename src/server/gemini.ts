@@ -44,8 +44,8 @@ export async function chatCompletion(prompt: string, maxTokens = 1500) {
 
     // List of verified working models (tested on Oct 2025)
     const modelNames = [
-        "gemini-2.0-flash-exp",    // Experimental - latest features
         "gemini-2.0-flash",        // Stable - most powerful
+        "gemini-2.0-flash-exp",    // Experimental - latest features
         "gemini-2.5-flash-lite",   // Lite version - faster
     ];
 

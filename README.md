@@ -1,9 +1,9 @@
-# GitHelp 🚀
+# RepoMind 🚀
 
 > AI-powered code analysis and Q&A platform that helps developers understand their codebases faster than ever before.
 
-[![Live Demo](https://img.shields.io/badge/Live%20Demo-githelp.onrender.com-blue?style=for-the-badge)](https://githelp.onrender.com/)
-[![GitHub](https://img.shields.io/badge/GitHub-Repository-black?style=for-the-badge&logo=github)](https://github.com/Yashborse45/GitHelp)
+[![Live Demo](https://img.shields.io/badge/Live%20Demo-RepoMind.onrender.com-blue?style=for-the-badge)](https://RepoMind.onrender.com/)
+[![GitHub](https://img.shields.io/badge/GitHub-Repository-black?style=for-the-badge&logo=github)](https://github.com/Yashborse45/RepoMind)
 [![Next.js](https://img.shields.io/badge/Next.js-15.5.3-black?style=for-the-badge&logo=next.js)](https://nextjs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5-blue?style=for-the-badge&logo=typescript)](https://www.typescriptlang.org/)
 
@@ -38,7 +38,7 @@
 ## 🚀 How It Works
 
 ### 1. **Connect Repository** 📂
-Link your GitHub repository to GitHelp. Our AI analyzes your codebase and makes it searchable with advanced vector embeddings.
+Link your GitHub repository to RepoMind. Our AI analyzes your codebase and makes it searchable with advanced vector embeddings.
 
 ### 2. **Ask Questions** 💬
 Ask questions about your code in natural language. Our AI understands context, functions, classes, and project architecture.
@@ -71,8 +71,8 @@ Before running this project, make sure you have:
 
 ### 1. **Clone the Repository**
 ```bash
-git clone https://github.com/xXemran05khanXx/GitHelp.git
-cd GitHelp
+git clone https://github.com/xXemran05khanXx/RepoMind.git
+cd RepoMind
 ```
 
 ### 2. **Install Dependencies**
@@ -134,7 +134,7 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 ## 📁 Project Structure
 
 ```
-GitHelp/
+RepoMind/
 ├── src/
 │   ├── app/                    # Next.js App Router pages
 │   │   ├── dashboard/          # Dashboard pages
@@ -185,7 +185,7 @@ GitHelp/
 
 ## 🌐 Deployment
 
-The project is deployed on [Render.com](https://githelp.onrender.com/) with:
+The project is deployed on [Render.com](https://RepoMind.onrender.com/) with:
 
 - **Automatic deployments** from GitHub main branch
 - **Environment variables** configured in Render dashboard
@@ -311,7 +311,7 @@ Strict TypeScript setup with Next.js 15 support:
 
 ## 📞 Support
 
-- **GitHub Issues**: [Report bugs or request features](https://github.com/xXemran05khanXx/GitHelp/issues)
+- **GitHub Issues**: [Report bugs or request features](https://github.com/xXemran05khanXx/RepoMind/issues)
 - **Documentation**: Check this README and inline code comments
 - **Community**: Join discussions in GitHub Discussions
 
@@ -333,8 +333,8 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 <div align="center">
 
-**Made with ❤️ by the GitHelp Team**
+**Made with ❤️ by the RepoMind Team**
 
-[Live Demo](https://githelp.onrender.com/) • [GitHub](https://github.com/xXemran05khanXx/GitHelp) • [Report Bug](https://github.com/xXemran05khanXx/GitHelp/issues)
+[Live Demo](https://RepoMind.onrender.com/) • [GitHub](https://github.com/xXemran05khanXx/RepoMind) • [Report Bug](https://github.com/xXemran05khanXx/RepoMind/issues)
 
 </div>

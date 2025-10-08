@@ -15,7 +15,7 @@ export function DashboardSidebar() {
               d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"
             />
           </svg>
-          <h1 className="text-xl font-bold text-foreground">GitHelp</h1>
+          <h1 className="text-xl font-bold text-foreground">RepoMind</h1>
         </div>
       </div>
 

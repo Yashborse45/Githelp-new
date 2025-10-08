@@ -83,7 +83,7 @@ export function Sidebar({ activeView, onViewChange, selectedProject, onProjectCh
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-2">
             <Logo className="h-6 w-6 text-primary" />
-            {!isCollapsed && <span className="text-xl font-bold text-foreground">GitHelp</span>}
+            {!isCollapsed && <span className="text-xl font-bold text-foreground">RepoMind</span>}
           </div>
           <Button variant="ghost" size="icon" onClick={() => setIsCollapsed(!isCollapsed)} className="h-8 w-8">
             <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

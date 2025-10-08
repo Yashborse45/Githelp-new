@@ -10,7 +10,7 @@ async function main() {
         update: {},
         create: {
             id: 'seed-project-1',
-            name: 'Sample GitHelp Project',
+            name: 'Sample RepoMind Project',
             repoUrl: 'https://github.com/vercel/next.js',
             repoOwner: 'vercel',
             repoName: 'next.js',

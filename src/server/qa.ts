@@ -22,9 +22,61 @@ class ServiceError extends Error {
 }
 
 /**
+ * Smart question enhancement - adds context if question seems repo-specific
+ */
+function enhanceQuestion(question: string): string {
+    const lowerQuestion = question.toLowerCase();
+
+    // Check if already mentions repository/project/codebase
+    const hasRepoContext =
+        lowerQuestion.includes('in this repo') ||
+        lowerQuestion.includes('in this project') ||
+        lowerQuestion.includes('in this codebase') ||
+        lowerQuestion.includes('in my repo') ||
+        lowerQuestion.includes('in my project') ||
+        lowerQuestion.includes('in my codebase') ||
+        lowerQuestion.includes('in the repo') ||
+        lowerQuestion.includes('in the project');
+
+    if (hasRepoContext) {
+        return question; // Already has context
+    }
+
+    // Keywords that suggest question is about their specific codebase
+    const repoSpecificKeywords = [
+        'home page', 'homepage', 'dashboard', 'landing page',
+        'header', 'footer', 'sidebar', 'navbar',
+        'login page', 'signup page', 'authentication',
+        'database', 'api', 'endpoint', 'route',
+        'component', 'file', 'folder', 'directory',
+        'how to change', 'how to modify', 'how to update',
+        'where is', 'where can i find', 'which file',
+        'what does', 'how does', 'why does',
+        'my code', 'my app', 'my application'
+    ];
+
+    const seemsRepoSpecific = repoSpecificKeywords.some(keyword =>
+        lowerQuestion.includes(keyword)
+    );
+
+    if (seemsRepoSpecific) {
+        return `${question} (in this repository)`;
+    }
+
+    return question;
+}
+
+/**
  * Answer a question using RAG (Retrieval-Augmented Generation)
  */
 export async function answerQuestion(projectId: string, question: string): Promise<QAResult> {
+    // Enhance question with repository context if needed
+    const enhancedQuestion = enhanceQuestion(question);
+    console.log(`Original question: "${question}"`);
+    if (enhancedQuestion !== question) {
+        console.log(`Enhanced to: "${enhancedQuestion}"`);
+    }
+
     // Input validation
     if (!projectId || typeof projectId !== 'string' || projectId.trim().length === 0) {
         return {
@@ -69,12 +121,13 @@ export async function answerQuestion(projectId: string, question: string): Promi
                     const { chatCompletion, embedTexts } = await import("./gemini");
                     const { queryVectors } = await import("./pinecone");
 
-                    console.log(`Processing question for project ${projectId}: ${question.substring(0, 100)}...`);
+                    console.log(`Processing question for project ${projectId}: ${enhancedQuestion.substring(0, 100)}...`);
 
                     // 1. RETRIEVAL STEP 1: Get the query vector (embedding for the question)
                     let qEmbedding;
                     try {
-                        const embeddings = await embedTexts([question.trim()]);
+                        // Use enhanced question for better retrieval
+                        const embeddings = await embedTexts([enhancedQuestion.trim()]);
                         if (!embeddings || embeddings.length === 0) {
                             throw new Error("Failed to generate embedding for question");
                         }
@@ -155,7 +208,7 @@ Provide a comprehensive answer:`;
 
                     let answerText;
                     try {
-                        answerText = await chatCompletion(prompt, 2000);
+                        answerText = await chatCompletion(prompt, 2000); // Keep 2000 for detailed answers
                     } catch (error) {
                         console.error('Answer generation failed:', error);
                         answerText = "I'm having trouble generating a response right now. Please try again in a moment.";

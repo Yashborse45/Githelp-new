@@ -1,7 +1,7 @@
 import { Pinecone } from "@pinecone-database/pinecone";
 
 const PINECONE_API_KEY = process.env.PINECONE_API_KEY;
-const PINECONE_INDEX = process.env.PINECONE_INDEX || "githelp";
+const PINECONE_INDEX = process.env.PINECONE_INDEX || "repomind";
 
 // Create pinecone instance only if API key is available
 let pinecone: Pinecone | null = null;

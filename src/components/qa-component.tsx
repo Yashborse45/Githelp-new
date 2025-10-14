@@ -7,7 +7,7 @@ import { MarkdownRenderer, preprocessGeminiText } from "@/components/ui/markdown
 import { Textarea } from "@/components/ui/textarea";
 import { askQuestion, getQAHistory, type Citation } from "@/lib/ask-api";
 import { Bot, Cloud, Loader2, MessageCircle, Send, User, X } from "lucide-react";
-import { useEffect, useState } from "react";
+import { memo, useCallback, useEffect, useRef, useState } from "react";
 import CodeReferences from "./code-references";
 
 interface QAComponentProps {
@@ -22,6 +22,55 @@ interface QAItem {
     createdAt: string;
 }
 
+// Memoized QA History Item to prevent re-renders
+const QAHistoryItem = memo(({ qa, index }: { qa: QAItem; index: number }) => (
+    <Card
+        key={qa.id}
+        className="border-l-4 border-l-gray-300 animate-in slide-in-from-bottom-5 duration-300 w-full"
+        style={{ animationDelay: `${index * 100}ms` }}
+    >
+        <CardContent className="pt-6">
+            <div className="space-y-4">
+                {/* Question */}
+                <div className="flex items-start gap-3">
+                    <User className="h-5 w-5 mt-1 text-blue-600 flex-shrink-0" />
+                    <div className="flex-1 min-w-0">
+                        <h4 className="font-medium text-blue-700 dark:text-blue-400 mb-2">You asked:</h4>
+                        <p className="text-gray-700 dark:text-gray-300 bg-blue-50 dark:bg-blue-950/30 p-3 rounded-lg border border-blue-200 dark:border-blue-800 break-words overflow-wrap-anywhere max-w-full">{qa.question}</p>
+                    </div>
+                </div>
+
+                {/* Answer */}
+                <div className="flex items-start gap-3">
+                    <Bot className="h-5 w-5 mt-1 text-green-600 flex-shrink-0" />
+                    <div className="flex-1 min-w-0">
+                        <h4 className="font-medium text-green-700 dark:text-green-400 mb-2">AI Assistant:</h4>
+                        <div className="bg-green-50 dark:bg-green-950/30 p-3 rounded-lg border border-green-200 dark:border-green-800 overflow-x-auto">
+                            <MarkdownRenderer
+                                content={preprocessGeminiText(qa.answer)}
+                                variant="compact"
+                                className="break-words max-w-full"
+                            />
+                        </div>
+                    </div>
+                </div>
+
+                {/* Code References */}
+                {qa.citations && qa.citations.length > 0 && (
+                    <CodeReferences citations={qa.citations} />
+                )}
+
+                {/* Timestamp */}
+                <div className="text-xs text-gray-500 dark:text-gray-400 border-t border-gray-200 dark:border-gray-700 pt-2">
+                    Asked on {new Date(qa.createdAt).toLocaleString()}
+                </div>
+            </div>
+        </CardContent>
+    </Card>
+));
+
+QAHistoryItem.displayName = 'QAHistoryItem';
+
 export default function QAComponent({ projectId }: QAComponentProps) {
     const [question, setQuestion] = useState("");
     const [isLoading, setIsLoading] = useState(false);
@@ -30,47 +79,25 @@ export default function QAComponent({ projectId }: QAComponentProps) {
     const [showAnswerPopup, setShowAnswerPopup] = useState(false);
     const [latestAnswer, setLatestAnswer] = useState<QAItem | null>(null);
 
-    // Load Q&A history on component mount and when project changes
-    useEffect(() => {
-        // Clear previous state when project changes
-        setQAHistory([]);
-        setQuestion("");
-        setError(null);
-        loadQAHistory();
-    }, [projectId]);
+    // Use ref for immediate updates without causing re-renders
+    const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-    // Handle Escape key to close popup
-    useEffect(() => {
-        const handleEscape = (e: KeyboardEvent) => {
-            if (e.key === 'Escape' && showAnswerPopup) {
-                setShowAnswerPopup(false);
-            }
-        };
-
-        if (showAnswerPopup) {
-            document.addEventListener('keydown', handleEscape);
-            // Prevent body scroll when popup is open
-            document.body.style.overflow = 'hidden';
-        } else {
-            document.body.style.overflow = '';
-        }
-
-        return () => {
-            document.removeEventListener('keydown', handleEscape);
-            document.body.style.overflow = '';
-        };
-    }, [showAnswerPopup]);
-
-    const loadQAHistory = async () => {
+    // Memoized functions
+    const loadQAHistory = useCallback(async () => {
         const result = await getQAHistory(projectId);
         if (result.success) {
             setQAHistory(result.data);
         } else {
             setError(result.error);
         }
+    }, [projectId]);
+
+    // Optimized input handler - direct state update, no extra logic
+    const handleQuestionChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+        setQuestion(e.target.value);
     };
 
-    const handleAskQuestion = async () => {
+    const handleAskQuestion = useCallback(async () => {
         if (!question.trim()) return;
 
         setIsLoading(true);
@@ -96,13 +123,45 @@ export default function QAComponent({ projectId }: QAComponentProps) {
             setError(err instanceof Error ? err.message : "An error occurred");
             setIsLoading(false);
         }
-    };
+    }, [projectId, question]);
 
     const handleKeyPress = (e: React.KeyboardEvent) => {
         if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
+            e.preventDefault();
             handleAskQuestion();
         }
     };
+
+    // Load Q&A history on component mount and when project changes
+    useEffect(() => {
+        // Clear previous state when project changes
+        setQAHistory([]);
+        setQuestion("");
+        setError(null);
+        loadQAHistory();
+    }, [projectId, loadQAHistory]);
+
+    // Handle Escape key to close popup
+    useEffect(() => {
+        const handleEscape = (e: KeyboardEvent) => {
+            if (e.key === 'Escape' && showAnswerPopup) {
+                setShowAnswerPopup(false);
+            }
+        };
+
+        if (showAnswerPopup) {
+            document.addEventListener('keydown', handleEscape);
+            // Prevent body scroll when popup is open
+            document.body.style.overflow = 'hidden';
+        } else {
+            document.body.style.overflow = '';
+        }
+
+        return () => {
+            document.removeEventListener('keydown', handleEscape);
+            document.body.style.overflow = '';
+        };
+    }, [showAnswerPopup]);
 
     return (
         <div className="max-w-4xl mx-auto space-y-6">
@@ -219,12 +278,16 @@ export default function QAComponent({ projectId }: QAComponentProps) {
                         </p>
                     </div>
                     <Textarea
+                        ref={textareaRef}
                         placeholder="Ask anything about this project... (Ctrl+Enter to send)"
                         value={question}
-                        onChange={(e) => setQuestion(e.target.value)}
+                        onChange={handleQuestionChange}
                         onKeyDown={handleKeyPress}
                         rows={3}
                         className="resize-none"
+                        autoComplete="off"
+                        spellCheck="false"
+                        disabled={isLoading}
                     />
                     <div className="flex justify-between items-center">
                         <span className="text-sm text-muted-foreground">
@@ -288,49 +351,7 @@ export default function QAComponent({ projectId }: QAComponentProps) {
                     </Card>
                 ) : (
                     qaHistory.map((qa, index) => (
-                        <Card
-                            key={qa.id}
-                            className="border-l-4 border-l-gray-300 animate-in slide-in-from-bottom-5 duration-300 w-full"
-                            style={{ animationDelay: `${index * 100}ms` }}
-                        >
-                            <CardContent className="pt-6">
-                                <div className="space-y-4">
-                                    {/* Question */}
-                                    <div className="flex items-start gap-3">
-                                        <User className="h-5 w-5 mt-1 text-blue-600 flex-shrink-0" />
-                                        <div className="flex-1 min-w-0">
-                                            <h4 className="font-medium text-blue-700 dark:text-blue-400 mb-2">You asked:</h4>
-                                            <p className="text-gray-700 dark:text-gray-300 bg-blue-50 dark:bg-blue-950/30 p-3 rounded-lg border border-blue-200 dark:border-blue-800 break-words overflow-wrap-anywhere max-w-full">{qa.question}</p>
-                                        </div>
-                                    </div>
-
-                                    {/* Answer */}
-                                    <div className="flex items-start gap-3">
-                                        <Bot className="h-5 w-5 mt-1 text-green-600 flex-shrink-0" />
-                                        <div className="flex-1 min-w-0">
-                                            <h4 className="font-medium text-green-700 dark:text-green-400 mb-2">AI Assistant:</h4>
-                                            <div className="bg-green-50 dark:bg-green-950/30 p-3 rounded-lg border border-green-200 dark:border-green-800 overflow-x-auto">
-                                                <MarkdownRenderer
-                                                    content={preprocessGeminiText(qa.answer)}
-                                                    variant="compact"
-                                                    className="break-words max-w-full"
-                                                />
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    {/* Code References */}
-                                    {qa.citations && qa.citations.length > 0 && (
-                                        <CodeReferences citations={qa.citations} />
-                                    )}
-
-                                    {/* Timestamp */}
-                                    <div className="text-xs text-gray-500 dark:text-gray-400 border-t border-gray-200 dark:border-gray-700 pt-2">
-                                        Asked on {new Date(qa.createdAt).toLocaleString()}
-                                    </div>
-                                </div>
-                            </CardContent>
-                        </Card>
+                        <QAHistoryItem key={qa.id} qa={qa} index={index} />
                     ))
                 )}
             </div>
